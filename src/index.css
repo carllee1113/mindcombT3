@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: #f8fafc;
+  background-image: 
+    linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  transition: transform 0.2s ease;
+}
+
+/* Animation for node creation */
+@keyframes nodeAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.canvas-container > div:not(svg) {
+  animation: nodeAppear 0.3s ease-out;
+  width: 200px;
+}
+
+/* Node colors based on level */
+.node-level-0 .node-header {
+  background-color: #6366F1; /* Indigo for central node */
+  color: white;
+}
+
+.node-level-1 .node-header {
+  background-color: #8B5CF6; /* Purple for first level */
+  color: white;
+}
+
+.node-level-2 .node-header {
+  background-color: #EC4899; /* Pink for second level */
+  color: white;
+}
+
+.node-level-3 .node-header {
+  background-color: #F97316; /* Orange for third level */
+  color: white;
+}
+
+.node-level-4 .node-header {
+  background-color: #14B8A6; /* Teal for fourth level */
+  color: white;
+}
