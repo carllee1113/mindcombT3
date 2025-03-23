@@ -1,0 +1,51 @@
+Based on the code I've seen, here's a summary of the features and functions implemented in your Mindcomb application:
+
+## Core Features
+
+1. **Interactive Mind Map Visualization**
+   - Visual representation of connected nodes in a mind map format
+   - Nodes can be dragged and repositioned
+   - Connections between nodes are visually displayed
+
+2. **Node Management**
+   - Create new nodes
+   - Delete existing nodes (except the central node)
+   - Edit node text content
+   - Automatic positioning of nodes in a radial layout
+
+3. **Connection Management**
+   - Create connections between nodes
+   - Remove connections when nodes are deleted
+   - Automatic connection routing between nodes
+
+4. **Layout System**
+   - Automatic arrangement of nodes in a radial pattern
+   - Hierarchical node positioning based on connection relationships
+   - Node spacing and positioning algorithms
+
+5. **Zoom and Navigation**
+   - Zoom in/out functionality
+   - Pan/drag the entire canvas
+
+6. **Import/Export Functionality**
+   - Import mind maps from FreeMind format
+   - Export mind maps to FreeMind format
+
+7. **AI Integration**
+   - AI-powered node content elaboration
+   - Generate suggestions for connected ideas
+
+8. **Context Menu System**
+   - Right-click menu for node operations
+   - Options for adding child nodes, editing, and deleting
+
+9. **State Management**
+   - Reactive state management using MobX
+   - Separation of concerns with manager classes
+
+10. **User Interface Components**
+    - Control panel for global operations
+    - Node editing interface
+    - Connection visualization
+
+This mind mapping tool appears to be designed for brainstorming, organizing ideas, and creating visual representations of connected concepts with modern features like AI assistance and import/export capabilities.
