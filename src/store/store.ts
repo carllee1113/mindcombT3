@@ -1,175 +1,24 @@
-import { makeAutoObservable, configure, runInAction } from 'mobx'
+import { configure } from 'mobx'
 import React from 'react'
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
+import { NodeStore } from './nodeStore'
+import { ConnectionStore } from './connectionStore'
+import { UIStore } from './uiStore'
 
-// Configure MobX for strict mode
+// Configure MobX
 configure({
-  enforceActions: 'observed',
-  computedRequiresReaction: false,
-  reactionRequiresObservable: false,
-  observableRequiresReaction: false,
-  disableErrorBoundaries: false
+  enforceActions: "observed",
+  computedRequiresReaction: true,
+  reactionRequiresObservable: true,
+  observableRequiresReaction: true
 })
 
-// Node type definition
-export interface Node {
-  id: string
-  content: string
-  x: number
-  y: number
-}
+// Import and re-export types from child stores
+export type { Node } from './nodeStore'
+export type { Connection } from './connectionStore'
 
-// Connection type definition
-export interface Connection {
-  sourceId: string
-  targetId: string
-}
-
-class NodeStore {
-  nodes: Node[] = []
-  centralNodeId: string | null = null
-
-  constructor() {
-    makeAutoObservable(this)
-  }
-
-  addNode(node: Node) {
-    runInAction(() => {
-      this.nodes.push(node)
-      if (!this.centralNodeId) {
-        this.centralNodeId = node.id
-      }
-    })
-  }
-
-  updateNode(id: string, updates: Partial<Node>) {
-    runInAction(() => {
-      const node = this.nodes.find(n => n.id === id)
-      if (node) {
-        Object.assign(node, updates)
-      }
-    })
-  }
-
-  setCentralNode(id: string) {
-    runInAction(() => {
-      this.centralNodeId = id
-    })
-  }
-
-  // Initialize with default mind map structure
-  initializeDefaultMindMap() {
-    runInAction(() => {
-      const centralNode: Node = {
-        id: 'central',
-        content: 'Main idea or concept',
-        x: 400,
-        y: 250
-      }
-      
-      const subtopics: Node[] = [
-        { id: 'sub1', content: 'Subtopic 1', x: 200, y: 150 },
-        { id: 'sub2', content: 'Subtopic 2', x: 600, y: 150 },
-        { id: 'sub3', content: 'Subtopic 3', x: 200, y: 350 },
-        { id: 'sub4', content: 'Subtopic 4', x: 600, y: 350 }
-      ]
-      
-      this.nodes = [centralNode, ...subtopics]
-      this.centralNodeId = centralNode.id
-    })
-  }
-
-  // Add missing methods
-  getNodeById(id: string): Node | undefined {
-    return this.nodes.find(n => n.id === id)
-  }
-
-  removeNode(id: string) {
-    runInAction(() => {
-      this.nodes = this.nodes.filter(n => n.id !== id)
-    })
-  }
-
-  updateNodeTitle(id: string, title: string) {
-    this.updateNode(id, { content: title })
-  }
-
-  updateNodeContent(id: string, content: string) {
-    this.updateNode(id, { content })
-  }
-}
-
-class ConnectionStore {
-  connections: Connection[] = []
-
-  constructor() {
-    makeAutoObservable(this)
-  }
-
-  addConnection(connection: Connection) {
-    runInAction(() => {
-      this.connections.push(connection)
-    })
-  }
-
-  // Initialize with default connections
-  initializeDefaultConnections() {
-    runInAction(() => {
-      this.connections = [
-        { sourceId: 'central', targetId: 'sub1' },
-        { sourceId: 'central', targetId: 'sub2' },
-        { sourceId: 'central', targetId: 'sub3' },
-        { sourceId: 'central', targetId: 'sub4' }
-      ]
-    })
-  }
-}
-
-class UIStore {
-  zoomLevel = 1
-  // Add missing properties
-  isNodeEditModalOpen = false
-  selectedNodeId: string | null = null
-
-  constructor() {
-    makeAutoObservable(this)
-  }
-
-  zoomIn() {
-    runInAction(() => {
-      this.zoomLevel = Math.min(2, this.zoomLevel + 0.1)
-    })
-  }
-
-  zoomOut() {
-    runInAction(() => {
-      this.zoomLevel = Math.max(0.5, this.zoomLevel - 0.1)
-    })
-  }
-
-  resetZoom() {
-    runInAction(() => {
-      this.zoomLevel = 1
-    })
-  }
-
-  // Add missing methods
-  openNodeEditModal(nodeId: string) {
-    runInAction(() => {
-      this.selectedNodeId = nodeId
-      this.isNodeEditModalOpen = true
-    })
-  }
-
-  closeNodeEditModal() {
-    runInAction(() => {
-      this.isNodeEditModalOpen = false
-      this.selectedNodeId = null
-    })
-  }
-}
-
+// Root store class
 class RootStore {
   nodeStore: NodeStore
   connectionStore: ConnectionStore
@@ -180,28 +29,50 @@ class RootStore {
     this.connectionStore = new ConnectionStore()
     this.uiStore = new UIStore()
     
-    // Initialize default data
-    this.nodeStore.initializeDefaultMindMap()
-    this.connectionStore.initializeDefaultConnections()
+    // Initialize default nodes
+    this.nodeStore.initializeDefaultNodes()
+    
+    // Initialize connections after nodes are created
+    setTimeout(() => {
+      const centralNode = this.nodeStore.nodes.find(node => node.id === this.nodeStore.centralNodeId)
+      const childNodes = this.nodeStore.nodes.filter(node => node.id !== this.nodeStore.centralNodeId)
+      
+      if (centralNode) {
+        const childIds = childNodes.map(node => node.id)
+        this.connectionStore.initializeDefaultConnections(centralNode.id, childIds)
+      }
+    }, 0)
   }
 }
 
-// Remove duplicate imports and keep the store context implementation at the bottom
-export const StoreContext = createContext<RootStore | null>(null)
+// Create singleton store instance
+const store = new RootStore()
 
-export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const store = new RootStore()
+// Create context with type
+const StoresContext = createContext<RootStore>(store)
+
+// Provider component using createElement
+const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   return React.createElement(
-    StoreContext.Provider,
+    StoresContext.Provider,
     { value: store },
     children
   )
 }
 
-export const useStore = () => {
-  const store = useContext(StoreContext)
-  if (!store) {
-    throw new Error('useStore must be used within a StoreProvider')
+// Hook for accessing store
+const useStore = () => {
+  const context = useContext(StoresContext)
+  if (!context) {
+    throw new Error('useStore must be used within StoreProvider')
   }
-  return store
+  return context
+}
+
+// Consolidated exports
+export {
+  store,
+  StoresContext,
+  StoreProvider,
+  useStore
 }
