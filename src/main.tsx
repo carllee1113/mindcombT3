@@ -2,12 +2,12 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
-import { StoresContext, store } from './store/store'
+import { StoreProvider } from './store/store'
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <StoresContext.Provider value={store}>
+    <StoreProvider>
       <App />
-    </StoresContext.Provider>
+    </StoreProvider>
   </React.StrictMode>
 )

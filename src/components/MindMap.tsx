@@ -1,40 +1,38 @@
-import React from 'react'
+// Remove React import since it's not used
 import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
+import NodeComponent from './Node'
+import Connection from './Connection'
+import NodeEditModal from './NodeEditModal'
 
-// Single observer declaration
 const MindMap = observer(() => {
   const { nodeStore, connectionStore, uiStore } = useStore()
   
   return (
-    <div className="canvas-container" style={{
-      transform: `scale(${uiStore.zoomLevel})`,
-      transformOrigin: '0 0'
-    }}>
+    <div className="relative w-full h-full"
+      style={{
+        transform: `scale(${uiStore.zoomLevel})`,
+        transformOrigin: 'center',
+        transition: 'transform 0.2s ease'
+      }}>
       {/* Render connections */}
       {connectionStore.connections.map(connection => (
-        <div 
+        <Connection 
           key={`${connection.sourceId}-${connection.targetId}`}
-          className="connection"
-        >
-          {/* Connection rendering logic */}
-        </div>
+          connection={connection}
+        />
       ))}
       
       {/* Render nodes */}
       {nodeStore.nodes.map(node => (
-        <div 
+        <NodeComponent 
           key={node.id}
-          className="node"
-          style={{
-            position: 'absolute',
-            left: `${node.x}px`,
-            top: `${node.y}px`
-          }}
-        >
-          {node.content}
-        </div>
+          node={node}
+          isCentral={node.id === nodeStore.centralNodeId}
+        />
       ))}
+      
+      <NodeEditModal />
     </div>
   )
 })

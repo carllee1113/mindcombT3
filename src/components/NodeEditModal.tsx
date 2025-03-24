@@ -1,69 +1,56 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
 
-export const NodeEditModal: React.FC = observer(() => {
-  const { nodeStore, uiStore } = useStore()
+const NodeEditModal = observer(() => {
+  const { uiStore, nodeStore } = useStore()
   const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
   
+  // Get the node being edited
   const node = uiStore.selectedNodeId ? nodeStore.getNodeById(uiStore.selectedNodeId) : null
   
   useEffect(() => {
     if (node) {
-      setTitle(node.title || '')
-      setContent(node.content || '')
+      setTitle(node.content)
     }
   }, [node])
   
   const handleSave = () => {
-    if (node && uiStore.selectedNodeId) {
+    if (uiStore.selectedNodeId) {
       nodeStore.updateNodeTitle(uiStore.selectedNodeId, title)
-      nodeStore.updateNodeContent(uiStore.selectedNodeId, content)
       uiStore.closeNodeEditModal()
     }
   }
   
-  if (!uiStore.isNodeEditModalOpen || !node) return null
+  if (!uiStore.isNodeEditModalOpen) {
+    return null
+  }
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-96 p-6">
+      <div className="bg-white rounded-lg p-6 w-96">
         <h2 className="text-xl font-bold mb-4">Edit Node</h2>
         
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
-            Title
-          </label>
+          <label className="block text-gray-700 mb-2">Node Text</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          />
-        </div>
-        
-        <div className="mb-6">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
-            Content
-          </label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-32"
+            className="w-full border border-gray-300 rounded px-3 py-2"
           />
         </div>
         
         <div className="flex justify-end space-x-2">
           <button
             onClick={() => uiStore.closeNodeEditModal()}
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+            className="px-4 py-2 border border-gray-300 rounded"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+            className="px-4 py-2 bg-indigo-600 text-white rounded"
           >
             Save
           </button>

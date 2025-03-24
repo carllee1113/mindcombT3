@@ -1,26 +1,19 @@
+import React, { useMemo } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useStore } from './store/store'
 import { ControlPanel } from './components/ControlPanel'
-// Change imports to match component exports
-import MindMap from './components/MindMap'  // Default import
-import { Header } from './components/Header' // Named import
-import { useCallback } from 'react'
+import MindMap from './components/MindMap.tsx'
+import Header from './components/Header.tsx'
 
-export const App = observer(() => {
+const App = observer(() => {
   const { uiStore } = useStore()
   
-  // Use memoized callbacks to prevent unnecessary re-renders
-  const handleZoomIn = useCallback(() => {
-    uiStore.zoomIn()
-  }, [uiStore])
-  
-  const handleZoomOut = useCallback(() => {
-    uiStore.zoomOut()
-  }, [uiStore])
-  
-  const handleResetZoom = useCallback(() => {
-    uiStore.resetZoom()
-  }, [uiStore])
+  // Prevent unnecessary re-renders by using stable references
+  const memoizedHandlers = useMemo(() => ({
+    handleZoomIn: () => uiStore.zoomIn(),
+    handleZoomOut: () => uiStore.zoomOut(),
+    handleResetZoom: () => uiStore.resetZoom()
+  }), [uiStore])
   
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -28,9 +21,9 @@ export const App = observer(() => {
       
       <div className="flex flex-1 overflow-hidden">
         <ControlPanel 
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onResetZoom={handleResetZoom}
+          onZoomIn={memoizedHandlers.handleZoomIn}
+          onZoomOut={memoizedHandlers.handleZoomOut}
+          onResetZoom={memoizedHandlers.handleResetZoom}
         />
         
         <div className="flex-1 relative overflow-auto">
@@ -41,4 +34,4 @@ export const App = observer(() => {
   )
 })
 
-export default App
+export default React.memo(App)

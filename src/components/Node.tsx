@@ -1,65 +1,51 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
-import { Node as NodeType } from '../store/nodeStore'
+import type { Node as NodeType } from '../store/store'
 
 interface NodeProps {
   node: NodeType
+  isCentral: boolean
 }
 
-export const Node: React.FC<NodeProps> = observer(({ node }) => {
-  const { nodeStore, uiStore } = useStore()
-  const [isDragging, setIsDragging] = useState(false)
+const Node = observer(({ node, isCentral }: NodeProps) => {
+  const { uiStore, nodeStore } = useStore()
   
-  // Handle node drag
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setIsDragging(true)
-    // Dragging implementation will be added later
-  }
-  
-  // Handle double click to edit
-  const handleDoubleClick = () => {
+  const handleNodeClick = () => {
     uiStore.openNodeEditModal(node.id)
   }
   
-  // Determine if this is the central/root node
-  const isCentralNode = node.id === nodeStore.centralNodeId
+  const handleRemoveNode = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!isCentral) {
+      nodeStore.removeNode(node.id)
+    }
+  }
   
   return (
     <div 
-      className={`absolute rounded-lg ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} transition-shadow duration-200`}
-      style={{ 
-        left: `${node.x}px`, 
+      className={`absolute rounded-md p-3 shadow-md bg-white border ${
+        isCentral ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
+      }`}
+      style={{
+        left: `${node.x}px`,
         top: `${node.y}px`,
-        zIndex: isDragging ? 20 : 10,
+        transform: 'translate(-50%, -50%)',
+        minWidth: '120px',
+        textAlign: 'center',
+        cursor: 'pointer'
       }}
-      onMouseDown={handleMouseDown}
-      onDoubleClick={handleDoubleClick}
+      onClick={handleNodeClick}
     >
-      <div className={`bg-white rounded-lg shadow-lg overflow-hidden border ${isCentralNode ? 'border-indigo-500' : 'border-gray-200'}`}>
-        <div className={`px-4 py-2 flex justify-between items-center ${isCentralNode ? 'bg-indigo-600' : 'bg-gray-100'}`}>
-          <h3 className={`font-medium text-sm truncate ${isCentralNode ? 'text-white' : 'text-gray-700'}`}>
-            {node.title || `Node ${node.id.substring(0, 4)}`}
-          </h3>
-          
-          {!isCentralNode && (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation()
-                nodeStore.removeNode(node.id)
-              }}
-              className="text-gray-500 hover:text-red-500"
-            >
-              ×
-            </button>
-          )}
-        </div>
-        
-        <div className="p-3 text-gray-700 text-sm">
-          {node.content}
-        </div>
-      </div>
+      {node.content}
+      {!isCentral && (
+        <button 
+          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+          onClick={handleRemoveNode}
+        >
+          ×
+        </button>
+      )}
     </div>
   )
 })
