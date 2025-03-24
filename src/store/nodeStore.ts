@@ -1,106 +1,161 @@
 import { makeAutoObservable } from 'mobx'
+import { v4 as uuid } from 'uuid'
 
-export interface Node {
-  id: string
+// Define node types for better type safety
+export type NodeId = string
+export type NodeLevel = 0 | 1 | 2 | 3
+
+// Separate interface for node position
+interface NodePosition {
   x: number
   y: number
-  title?: string
+}
+
+// Base node interface
+export interface INode {
+  id: NodeId
+  position: NodePosition
+  title: string
   content: string
-  parentId?: string
+  level: NodeLevel
+  parentId?: NodeId
+}
+
+// Node factory for creating different types of nodes
+// Export NodeFactory
+export class NodeFactory {
+  static createCentralNode(position: NodePosition): INode {
+    return {
+      id: uuid(),
+      position,
+      title: 'Main idea or concept',
+      content: 'Main idea or concept',
+      level: 0
+    }
+  }
+
+  static createChildNode(params: {
+    position: NodePosition,
+    title: string,
+    parentId: NodeId,
+    level: NodeLevel
+  }): INode {
+    return {
+      id: uuid(),
+      position: params.position,
+      title: params.title,
+      content: params.title,
+      level: params.level,
+      parentId: params.parentId
+    }
+  }
 }
 
 export class NodeStore {
-  nodes: Node[] = []
-  centralNodeId: string = ''
+  private nodes: Map<NodeId, INode> = new Map()
+  private _centralNodeId: NodeId = ''
 
   constructor() {
     makeAutoObservable(this)
+    this.initializeDefaultNodes()
   }
 
-  initializeDefaultNodes(): void {
+  get centralNodeId(): NodeId {
+    return this._centralNodeId
+  }
+
+  get allNodes(): INode[] {
+    return Array.from(this.nodes.values())
+  }
+
+  private initializeDefaultNodes(): void {
+    const centerX = window.innerWidth / 2
+    const centerY = window.innerHeight / 2
+
     // Create central node
-    const centralNode: Node = {
-      id: 'central-' + Date.now(),
-      x: window.innerWidth / 2 - 100,
-      y: window.innerHeight / 2 - 100,
-      title: 'Central Topic',
-      content: 'Main idea or concept'
-    }
-    this.centralNodeId = centralNode.id
-    
-    // Add central node
+    const centralNode = NodeFactory.createCentralNode({ x: centerX, y: centerY })
+    this._centralNodeId = centralNode.id
     this.addNode(centralNode)
-    
-    // Create child nodes
-    const childNodes: Node[] = [
-      {
-        id: 'child-1-' + Date.now(),
-        x: centralNode.x - 250,
-        y: centralNode.y - 150,
-        content: 'Subtopic 1',
-        parentId: centralNode.id
-      },
-      {
-        id: 'child-2-' + Date.now(),
-        x: centralNode.x + 250,
-        y: centralNode.y - 150,
-        content: 'Subtopic 2',
-        parentId: centralNode.id
-      },
-      {
-        id: 'child-3-' + Date.now(),
-        x: centralNode.x - 250,
-        y: centralNode.y + 150,
-        content: 'Subtopic 3',
-        parentId: centralNode.id
-      },
-      {
-        id: 'child-4-' + Date.now(),
-        x: centralNode.x + 250,
-        y: centralNode.y + 150,
-        content: 'Subtopic 4',
-        parentId: centralNode.id
-      }
+
+    // Define child node positions relative to center
+    const childPositions = [
+      { x: centerX, y: centerY - 200 },
+      { x: centerX + 300, y: centerY },
+      { x: centerX, y: centerY + 200 }
     ]
-    
-    // Add child nodes
-    childNodes.forEach(node => this.addNode(node))
+
+    // Create child nodes
+    childPositions.forEach((position, index) => {
+      const childNode = NodeFactory.createChildNode({
+        position,
+        title: `Subtopic ${index + 1}`,
+        parentId: centralNode.id,
+        level: 1
+      })
+      this.addNode(childNode)
+    })
   }
 
-  addNode(node: Node): void {
-    this.nodes.push(node)
+  addNode(node: INode): void {
+    this.validateNode(node)
+    this.nodes.set(node.id, node)
   }
 
-  removeNode(id: string): void {
-    // Don't allow removing the central node
-    if (id === this.centralNodeId) return
-    
-    this.nodes = this.nodes.filter(node => node.id !== id)
+  removeNode(id: NodeId): void {
+    if (id === this._centralNodeId) return
+    this.nodes.delete(id)
+    // Remove child nodes recursively
+    this.removeChildNodes(id)
   }
-  
-  updateNodePosition(id: string, x: number, y: number): void {
-    const node = this.getNodeById(id)
+
+  private removeChildNodes(parentId: NodeId): void {
+    const childNodes = this.getChildNodes(parentId)
+    childNodes.forEach(child => {
+      this.nodes.delete(child.id)
+      this.removeChildNodes(child.id)
+    })
+  }
+
+  updateNodePosition(id: NodeId, position: NodePosition): void {
+    const node = this.nodes.get(id)
     if (node) {
-      node.x = x
-      node.y = y
+      node.position = position
     }
   }
-  
-  updateNodeContent(id: string, content: string): void {
-    const node = this.getNodeById(id)
+
+  updateNodeContent(id: NodeId, content: string): void {
+    const node = this.nodes.get(id)
     if (node) {
-      node.content = content
+      node.content = this.sanitizeContent(content)
     }
   }
-  
-  updateNodeTitle(id: string, title: string): void {
-    const node = this.getNodeById(id)
+
+  updateNodeTitle(id: NodeId, title: string): void {
+    const node = this.nodes.get(id)
     if (node) {
-      node.title = title
+      node.title = this.sanitizeTitle(title)
     }
   }
-  
-  getNodeById(id: string): Node | undefined {
-    return this.nodes.find(node => node.id === id)
+
+  getNodeById(id: NodeId): INode | undefined {
+    return this.nodes.get(id)
+  }
+
+  getChildNodes(parentId: NodeId): INode[] {
+    return this.allNodes.filter(node => node.parentId === parentId)
+  }
+
+  private validateNode(node: INode): void {
+    if (!node.id || !node.title || node.level === undefined) {
+      throw new Error('Invalid node structure')
+    }
+  }
+
+  private sanitizeContent(content: string): string {
+    return content.trim()
+  }
+
+  private sanitizeTitle(title: string): string {
+    return title.trim()
   }
 }

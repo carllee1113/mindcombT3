@@ -77,3 +77,9 @@ body {
   background-color: #14B8A6; /* Teal for fourth level */
   color: white;
 }
+
+.mindmap-container {
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+}

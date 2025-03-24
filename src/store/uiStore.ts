@@ -1,58 +1,59 @@
 import { makeAutoObservable } from 'mobx'
 
-export interface Point {
-  x: number
-  y: number
-}
-
 export class UIStore {
+  viewportX: number = 0
+  viewportY: number = 0
+  isDragging: boolean = false
+  lastMouseX: number = 0
+  lastMouseY: number = 0
   zoomLevel: number = 1
-  panOffset: Point = { x: 0, y: 0 }
-  isNodeEditModalOpen: boolean = false
   selectedNodeId: string | null = null
-  contextMenuPosition: Point | null = null
-  
+  isNodeEditModalOpen: boolean = false
+
   constructor() {
     makeAutoObservable(this)
   }
-  
-  setZoomLevel(level: number): void {
-    // Limit zoom between 0.2 and 2
-    this.zoomLevel = Math.max(0.2, Math.min(2, level))
+
+  zoomIn() {
+    this.zoomLevel = Math.min(2, this.zoomLevel + 0.1)
   }
-  
-  zoomIn(): void {
-    this.setZoomLevel(this.zoomLevel + 0.1)
+
+  zoomOut() {
+    this.zoomLevel = Math.max(0.5, this.zoomLevel - 0.1)
   }
-  
-  zoomOut(): void {
-    this.setZoomLevel(this.zoomLevel - 0.1)
-  }
-  
-  resetZoom(): void {
+
+  resetZoom() {
     this.zoomLevel = 1
-    this.panOffset = { x: 0, y: 0 }
   }
-  
-  setPanOffset(offset: Point): void {
-    this.panOffset = offset
+
+  startPan(x: number, y: number) {
+    this.isDragging = true
+    this.lastMouseX = x
+    this.lastMouseY = y
   }
-  
-  openNodeEditModal(nodeId: string): void {
+
+  updatePan(x: number, y: number) {
+    if (this.isDragging) {
+      const deltaX = x - this.lastMouseX
+      const deltaY = y - this.lastMouseY
+      this.viewportX += deltaX
+      this.viewportY += deltaY
+      this.lastMouseX = x
+      this.lastMouseY = y
+    }
+  }
+
+  endPan() {
+    this.isDragging = false
+  }
+
+  openNodeEditModal(nodeId: string) {
     this.selectedNodeId = nodeId
     this.isNodeEditModalOpen = true
   }
-  
-  closeNodeEditModal(): void {
-    this.isNodeEditModalOpen = false
+
+  closeNodeEditModal() {
     this.selectedNodeId = null
-  }
-  
-  showContextMenu(position: Point): void {
-    this.contextMenuPosition = position
-  }
-  
-  hideContextMenu(): void {
-    this.contextMenuPosition = null
+    this.isNodeEditModalOpen = false
   }
 }

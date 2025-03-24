@@ -1,53 +1,38 @@
-import React from 'react'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
-import type { Node as NodeType } from '../store/store'
+import type { INode } from '../store/store'
 
 interface NodeProps {
-  node: NodeType
+  node: INode
   isCentral: boolean
 }
 
-const Node = observer(({ node, isCentral }: NodeProps) => {
-  const { uiStore, nodeStore } = useStore()
-  
-  const handleNodeClick = () => {
-    uiStore.openNodeEditModal(node.id)
-  }
-  
-  const handleRemoveNode = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!isCentral) {
-      nodeStore.removeNode(node.id)
-    }
-  }
-  
+const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
+  const { uiStore } = useStore()
+
   return (
-    <div 
-      className={`absolute rounded-md p-3 shadow-md bg-white border ${
-        isCentral ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
+    <div
+      key={node.id}
+      className={`absolute p-4 rounded-lg shadow-md transition-transform ${
+        isCentral ? 'bg-indigo-600 text-white' :
+        node.level === 1 ? 'bg-indigo-100 text-gray-800' :
+        node.level === 2 ? 'bg-white text-gray-800' :
+        'bg-gray-50 text-gray-600'
       }`}
       style={{
-        left: `${node.x}px`,
-        top: `${node.y}px`,
-        transform: 'translate(-50%, -50%)',
-        minWidth: '120px',
-        textAlign: 'center',
+        transform: `translate(${node.position.x}px, ${node.position.y}px)`,
         cursor: 'pointer'
       }}
-      onClick={handleNodeClick}
+      onDoubleClick={(e) => {
+        e.stopPropagation()
+        uiStore.openNodeEditModal(node.id)
+      }}
     >
-      {node.content}
-      {!isCentral && (
-        <button 
-          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-          onClick={handleRemoveNode}
-        >
-          ×
-        </button>
-      )}
+      <div className="text-sm">
+        {node.content}
+      </div>
     </div>
   )
 })
 
-export default Node
+export default NodeComponent
