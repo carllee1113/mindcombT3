@@ -4,6 +4,8 @@ export class UIStore {
   viewportX: number = 0
   viewportY: number = 0
   isDragging: boolean = false
+  isDraggingNode: boolean = false
+  draggedNodeId: string | null = null
   lastMouseX: number = 0
   lastMouseY: number = 0
   zoomLevel: number = 1
@@ -12,6 +14,16 @@ export class UIStore {
 
   constructor() {
     makeAutoObservable(this)
+  }
+
+  startNodeDrag(nodeId: string) {
+    this.isDraggingNode = true
+    this.draggedNodeId = nodeId
+  }
+
+  endNodeDrag() {
+    this.isDraggingNode = false
+    this.draggedNodeId = null
   }
 
   zoomIn() {
@@ -24,27 +36,6 @@ export class UIStore {
 
   resetZoom() {
     this.zoomLevel = 1
-  }
-
-  startPan(x: number, y: number) {
-    this.isDragging = true
-    this.lastMouseX = x
-    this.lastMouseY = y
-  }
-
-  updatePan(x: number, y: number) {
-    if (this.isDragging) {
-      const deltaX = x - this.lastMouseX
-      const deltaY = y - this.lastMouseY
-      this.viewportX += deltaX
-      this.viewportY += deltaY
-      this.lastMouseX = x
-      this.lastMouseY = y
-    }
-  }
-
-  endPan() {
-    this.isDragging = false
   }
 
   openNodeEditModal(nodeId: string) {

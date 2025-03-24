@@ -1,5 +1,13 @@
 import { makeAutoObservable } from 'mobx'
 import { v4 as uuid } from 'uuid'
+export type ConnectionPointType = 'left' | 'right' | 'leftTop' | 'rightTop' | 'leftBottom' | 'rightBottom'
+
+export interface ConnectionPoint {
+  x: number
+  y: number
+  type: ConnectionPointType
+}
+import { getRandomColor } from '../utils/colors'
 
 // Define node types for better type safety
 export type NodeId = string
@@ -19,10 +27,23 @@ export interface INode {
   content: string
   level: NodeLevel
   parentId?: NodeId
+  branchColor?: string
+  connectionPoints: ConnectionPoint[]
 }
 
 // Node factory for creating different types of nodes
 // Export NodeFactory
+const calculateConnectionPoints = (nodeWidth: number = 100, nodeHeight: number = 50): ConnectionPoint[] => {
+  return [
+    { x: 0, y: nodeHeight / 2, type: 'left' },
+    { x: nodeWidth, y: nodeHeight / 2, type: 'right' },
+    { x: nodeWidth / 4, y: 0, type: 'leftTop' },
+    { x: nodeWidth * 3/4, y: 0, type: 'rightTop' },
+    { x: nodeWidth / 4, y: nodeHeight, type: 'leftBottom' },
+    { x: nodeWidth * 3/4, y: nodeHeight, type: 'rightBottom' }
+  ]
+}
+
 export class NodeFactory {
   static createCentralNode(position: NodePosition): INode {
     return {
@@ -30,7 +51,9 @@ export class NodeFactory {
       position,
       title: 'Main idea or concept',
       content: 'Main idea or concept',
-      level: 0
+      level: 0,
+      connectionPoints: calculateConnectionPoints(),
+      branchColor: '#4A5568'
     }
   }
 
@@ -38,7 +61,8 @@ export class NodeFactory {
     position: NodePosition,
     title: string,
     parentId: NodeId,
-    level: NodeLevel
+    level: NodeLevel,
+    branchColor: string
   }): INode {
     return {
       id: uuid(),
@@ -46,7 +70,9 @@ export class NodeFactory {
       title: params.title,
       content: params.title,
       level: params.level,
-      parentId: params.parentId
+      parentId: params.parentId,
+      connectionPoints: calculateConnectionPoints(),
+      branchColor: params.branchColor
     }
   }
 }
@@ -54,8 +80,10 @@ export class NodeFactory {
 export class NodeStore {
   private nodes: Map<NodeId, INode> = new Map()
   private _centralNodeId: NodeId = ''
+  private rootStore: any // We'll type this properly later
 
-  constructor() {
+  constructor(rootStore: any) {
+    this.rootStore = rootStore
     makeAutoObservable(this)
     this.initializeDefaultNodes()
   }
@@ -71,29 +99,37 @@ export class NodeStore {
   private initializeDefaultNodes(): void {
     const centerX = window.innerWidth / 2
     const centerY = window.innerHeight / 2
-
+  
     // Create central node
     const centralNode = NodeFactory.createCentralNode({ x: centerX, y: centerY })
     this._centralNodeId = centralNode.id
     this.addNode(centralNode)
-
-    // Define child node positions relative to center
+  
+    const childNodeIds: NodeId[] = []
+  
+    // Define child node positions and their connection points
     const childPositions = [
-      { x: centerX, y: centerY - 200 },
-      { x: centerX + 300, y: centerY },
-      { x: centerX, y: centerY + 200 }
+      { x: centerX - 200, y: centerY - 200, color: getRandomColor() }, // Top left
+      { x: centerX + 200, y: centerY - 200, color: getRandomColor() }, // Top right
+      { x: centerX - 200, y: centerY + 200, color: getRandomColor() }, // Bottom left
+      { x: centerX + 200, y: centerY + 200, color: getRandomColor() }  // Bottom right
     ]
-
+  
     // Create child nodes
-    childPositions.forEach((position, index) => {
+    childPositions.forEach((pos, index) => {
       const childNode = NodeFactory.createChildNode({
-        position,
+        position: { x: pos.x, y: pos.y },
         title: `Subtopic ${index + 1}`,
         parentId: centralNode.id,
-        level: 1
+        level: 1,
+        branchColor: pos.color
       })
       this.addNode(childNode)
+      childNodeIds.push(childNode.id)
     })
+  
+    // Initialize connections in the connection store
+    this.rootStore.connectionStore.initializeDefaultConnections(centralNode.id, childNodeIds)
   }
 
   addNode(node: INode): void {

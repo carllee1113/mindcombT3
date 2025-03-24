@@ -11,9 +11,9 @@ export class RootStore {
   connectionStore: ConnectionStore
 
   constructor() {
-    this.nodeStore = new NodeStore()
-    this.uiStore = new UIStore()
     this.connectionStore = new ConnectionStore()
+    this.nodeStore = new NodeStore(this)
+    this.uiStore = new UIStore()
     makeAutoObservable(this)
   }
 }
