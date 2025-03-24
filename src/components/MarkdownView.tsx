@@ -17,8 +17,8 @@ const MarkdownView = observer(() => {
     if (!centralNode) return ''
 
     const processNode = (node: INode, level: number): string => {
-      const indent = '#'.repeat(level)
-      let markdown = `${indent} ${node.content}\n\n`
+      const header = '#'.repeat(level)
+      let markdown = `${header} ${node.content}\n`
       
       const children = nodeStore.getChildNodes(node.id)
       children.forEach(child => {
@@ -37,7 +37,6 @@ const MarkdownView = observer(() => {
 
   const handleSave = () => {
     const lines = markdown.split('\n').filter(line => line.trim())
-    // Track nodes at each level
     const levelNodes = new Map<number, INode>()
     let lastNode: INode | null = null
   
@@ -88,13 +87,66 @@ const MarkdownView = observer(() => {
     })
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      const start = e.currentTarget.selectionStart
+      const text = e.currentTarget.value
+      const lineStart = text.lastIndexOf('\n', start - 1) + 1
+      const currentLine = text.substring(lineStart)
+      const match = currentLine.match(/^(#+)/)
+      if (match) {
+        const newText = text.substring(0, lineStart) + '#' + currentLine
+        setMarkdown(newText)
+        e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1
+      }
+    }
+  }
+
   return (
     <div className="w-full h-full p-8 bg-white flex flex-col gap-4">
+      <div className="flex gap-2 mb-2">
+        <button
+          onClick={() => {
+            const textarea = document.querySelector('textarea')
+            if (!textarea) return
+            const start = textarea.selectionStart
+            const text = textarea.value
+            const lineStart = text.lastIndexOf('\n', start - 1) + 1
+            const lineEnd = text.indexOf('\n', start)
+            const currentLine = text.substring(lineStart, lineEnd === -1 ? text.length : lineEnd)
+            // Remove unused currentIndent variable
+            const newText = text.substring(0, lineStart) + 
+              '  ' + text.substring(lineStart)
+            setMarkdown(newText)
+          }}
+          className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+        >
+          →
+        </button>
+        <button
+          onClick={() => {
+            const textarea = document.querySelector('textarea')
+            if (!textarea) return
+            const start = textarea.selectionStart
+            const text = textarea.value
+            const lineStart = text.lastIndexOf('\n', start - 1) + 1
+            const currentLine = text.substring(lineStart)
+            if (currentLine.startsWith('  ')) {
+              setMarkdown(text.substring(0, lineStart) + currentLine.substring(2))
+            }
+          }}
+          className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+        >
+          ←
+        </button>
+      </div>
       <textarea
         value={markdown}
         onChange={handleMarkdownChange}
+        onKeyDown={handleKeyDown}
         className="flex-1 w-full p-4 font-mono text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        placeholder="Edit your mind map in markdown format..."
+        placeholder="Edit your mind map using bullets (• -) and arrows to control layers..."
       />
       <button
         onClick={handleSave}
