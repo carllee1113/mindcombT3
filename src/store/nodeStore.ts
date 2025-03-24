@@ -194,4 +194,8 @@ export class NodeStore {
   private sanitizeTitle(title: string): string {
     return title.trim()
   }
+
+  getConnectionStore() {
+    return this.rootStore.connectionStore
+  }
 }

@@ -1,9 +1,6 @@
 import { observer } from 'mobx-react-lite'
 import type { INode } from '../store/store'
-type ConnectionPoint = {
-  x: number
-  y: number
-}
+import type { ConnectionPoint } from '../types/node'
 
 interface ConnectionLineProps {
   sourceNode: INode
@@ -14,10 +11,43 @@ interface ConnectionLineProps {
 }
 
 const ConnectionLine = observer(({ sourceNode, targetNode, color, sourcePoint, targetPoint }: ConnectionLineProps) => {
-  const startX = sourceNode.position.x + sourcePoint.x
-  const startY = sourceNode.position.y + sourcePoint.y
-  const endX = targetNode.position.x + targetPoint.x
-  const endY = targetNode.position.y + targetPoint.y
+  // Recalculate connection points based on current positions
+  const dx = targetNode.position.x - sourceNode.position.x
+  const dy = targetNode.position.y - sourceNode.position.y
+
+  // Dynamically determine connection points
+  let currentSourcePoint = sourcePoint
+  let currentTargetPoint = targetPoint
+
+  if (sourceNode.connectionPoints && targetNode.connectionPoints) {
+    if (dx > 0) {
+      currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'right') || sourcePoint
+      currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'left') || targetPoint
+    } else {
+      currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'left') || sourcePoint
+      currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'right') || targetPoint
+    }
+  }
+
+  const startX = sourceNode.position.x + currentSourcePoint.x
+  const startY = sourceNode.position.y + currentSourcePoint.y
+  const endX = targetNode.position.x + currentTargetPoint.x
+  const endY = targetNode.position.y + currentTargetPoint.y
+
+  const deltaX = endX - startX
+  const deltaY = endY - startY
+  const controlPointOffset = Math.abs(deltaX) * 0.4
+  const verticalOffset = Math.sign(deltaY) * Math.min(Math.abs(deltaY) * 0.2, 30)
+
+  const path = deltaX > 0 
+    ? `M ${startX} ${startY}
+       C ${startX + controlPointOffset} ${startY + verticalOffset}
+         ${endX - controlPointOffset} ${endY - verticalOffset}
+         ${endX} ${endY}`
+    : `M ${startX} ${startY}
+       C ${startX - controlPointOffset} ${startY + verticalOffset}
+         ${endX + controlPointOffset} ${endY - verticalOffset}
+         ${endX} ${endY}`
 
   return (
     <svg
@@ -30,13 +60,13 @@ const ConnectionLine = observer(({ sourceNode, targetNode, color, sourcePoint, t
         pointerEvents: 'none',
       }}
     >
-      <line
-        x1={startX}
-        y1={startY}
-        x2={endX}
-        y2={endY}
+      <path
+        d={path}
         stroke={color}
-        strokeWidth={2}
+        strokeWidth={5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )

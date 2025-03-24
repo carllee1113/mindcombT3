@@ -21,32 +21,38 @@ export const MindMap = observer(() => {
       
       if (!sourceNode || !targetNode) return null
 
-      // Calculate relative position to determine connection points
       const dx = targetNode.position.x - sourceNode.position.x
       const dy = targetNode.position.y - sourceNode.position.y
 
-      let sourcePoint: ConnectionPoint
+      // Determine which side of the child node to connect
       let targetPoint: ConnectionPoint
+      let sourcePoint: ConnectionPoint
 
       if (sourceNode.id === nodeStore.centralNodeId) {
-        // For central node, select connection point based on target position
-        if (dx > 0 && Math.abs(dy) < Math.abs(dx)) {
-          sourcePoint = sourceNode.connectionPoints.find(p => p.type === 'right')!
-          targetPoint = targetNode.connectionPoints.find(p => p.type === 'left')!
-        } else if (dx < 0 && Math.abs(dy) < Math.abs(dx)) {
-          sourcePoint = sourceNode.connectionPoints.find(p => p.type === 'left')!
-          targetPoint = targetNode.connectionPoints.find(p => p.type === 'right')!
-        } else if (dy > 0) {
-          sourcePoint = sourceNode.connectionPoints.find(p => dx > 0 ? p.type === 'rightBottom' : p.type === 'leftBottom')!
-          targetPoint = targetNode.connectionPoints.find(p => p.type === 'leftTop')!
+        // For central node, select connection point based on quadrant
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // Horizontal connection
+          if (dx > 0) {
+            sourcePoint = sourceNode.connectionPoints.find(p => p.type === 'rightTop')!
+            targetPoint = targetNode.connectionPoints.find(p => p.type === 'left')!
+          } else {
+            sourcePoint = sourceNode.connectionPoints.find(p => p.type === 'leftTop')!
+            targetPoint = targetNode.connectionPoints.find(p => p.type === 'right')!
+          }
         } else {
-          sourcePoint = sourceNode.connectionPoints.find(p => dx > 0 ? p.type === 'rightTop' : p.type === 'leftTop')!
-          targetPoint = targetNode.connectionPoints.find(p => p.type === 'leftBottom')!
+          // Vertical connection
+          if (dy > 0) {
+            sourcePoint = sourceNode.connectionPoints.find(p => p.type === 'rightBottom')!
+            targetPoint = targetNode.connectionPoints.find(p => p.type === 'left')!
+          } else {
+            sourcePoint = sourceNode.connectionPoints.find(p => p.type === 'leftBottom')!
+            targetPoint = targetNode.connectionPoints.find(p => p.type === 'right')!
+          }
         }
       } else {
         // For non-central nodes, use simple left-right connection
-        sourcePoint = sourceNode.connectionPoints.find(p => p.type === 'right')!
-        targetPoint = targetNode.connectionPoints.find(p => p.type === 'left')!
+        sourcePoint = sourceNode.connectionPoints.find(p => dx > 0 ? p.type === 'right' : p.type === 'left')!
+        targetPoint = targetNode.connectionPoints.find(p => dx > 0 ? p.type === 'left' : p.type === 'right')!
       }
 
       return (
