@@ -12,6 +12,7 @@ export class UIStore {
   selectedNodeId: string | null = null
   isNodeEditModalOpen: boolean = false
   isPanning: boolean = false
+  viewMode: 'mindmap' | 'markdown' = 'mindmap'
 
   constructor() {
     makeAutoObservable(this)
@@ -64,5 +65,9 @@ export class UIStore {
 
   endPan() {
     this.isPanning = false
+  }
+
+  toggleViewMode() {
+    this.viewMode = this.viewMode === 'mindmap' ? 'markdown' : 'mindmap'
   }
 }
