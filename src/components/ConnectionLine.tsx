@@ -13,19 +13,31 @@ interface ConnectionLineProps {
 const ConnectionLine = observer(({ sourceNode, targetNode, color, sourcePoint, targetPoint }: ConnectionLineProps) => {
   // Recalculate connection points based on current positions
   const dx = targetNode.position.x - sourceNode.position.x
-  const dy = targetNode.position.y - sourceNode.position.y
 
   // Dynamically determine connection points
   let currentSourcePoint = sourcePoint
   let currentTargetPoint = targetPoint
 
   if (sourceNode.connectionPoints && targetNode.connectionPoints) {
-    if (dx > 0) {
-      currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'right') || sourcePoint
-      currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'left') || targetPoint
+    // Check if target node is a child of central node
+    if (targetNode.parentId === sourceNode.id) {
+      // For direct children of central node, use standard left/right connection
+      if (dx > 0) {
+        currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'right') || sourcePoint
+        currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'left') || targetPoint
+      } else {
+        currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'left') || sourcePoint
+        currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'right') || targetPoint
+      }
     } else {
-      currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'left') || sourcePoint
-      currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'right') || targetPoint
+      // For subsequent levels, maintain the same side as parent
+      const isRightBranch = dx > 0
+      currentSourcePoint = sourceNode.connectionPoints.find(p => 
+        isRightBranch ? p.type === 'right' : p.type === 'left'
+      ) || sourcePoint
+      currentTargetPoint = targetNode.connectionPoints.find(p => 
+        isRightBranch ? p.type === 'left' : p.type === 'right'
+      ) || targetPoint
     }
   }
 
@@ -53,21 +65,24 @@ const ConnectionLine = observer(({ sourceNode, targetNode, color, sourcePoint, t
     <svg
       style={{
         position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
+        top: -10000,
+        left: -10000,
+        width: '20000px',
+        height: '20000px',
         pointerEvents: 'none',
+        overflow: 'visible',
       }}
     >
-      <path
-        d={path}
-        stroke={color}
-        strokeWidth={5}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <g transform="translate(10000, 10000)">
+        <path
+          d={path}
+          stroke={color}
+          strokeWidth={5}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
     </svg>
   )
 })

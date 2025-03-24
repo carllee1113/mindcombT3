@@ -11,6 +11,7 @@ export class UIStore {
   zoomLevel: number = 1
   selectedNodeId: string | null = null
   isNodeEditModalOpen: boolean = false
+  isPanning: boolean = false
 
   constructor() {
     makeAutoObservable(this)
@@ -46,5 +47,22 @@ export class UIStore {
   closeNodeEditModal() {
     this.selectedNodeId = null
     this.isNodeEditModalOpen = false
+  }
+
+  setZoomLevel(level: number) {
+    this.zoomLevel = Math.max(0.1, Math.min(2, level))
+  }
+
+  setViewportPosition(x: number, y: number) {
+    this.viewportX = x
+    this.viewportY = y
+  }
+
+  startPan() {
+    this.isPanning = true
+  }
+
+  endPan() {
+    this.isPanning = false
   }
 }

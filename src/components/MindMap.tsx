@@ -8,6 +8,43 @@ import type { ConnectionPoint } from '../types/node'
 export const MindMap = observer(() => {
   const { nodeStore, connectionStore, uiStore } = useStore()
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only start panning on left click and when clicking empty space
+    const target = e.target as HTMLElement
+    if (e.button === 0 && (target.classList.contains('mindmap-container') || 
+        target.classList.contains('mindmap-wrapper'))) {
+      uiStore.startPan()
+      uiStore.lastMouseX = e.clientX
+      uiStore.lastMouseY = e.clientY
+      
+      document.addEventListener('mousemove', handleGlobalMouseMove)
+      document.addEventListener('mouseup', handleGlobalMouseUp)
+    }
+  }
+
+  const handleGlobalMouseMove = (e: MouseEvent) => {
+    if (uiStore.isPanning) {
+      const deltaX = e.clientX - uiStore.lastMouseX
+      const deltaY = e.clientY - uiStore.lastMouseY
+      
+      uiStore.setViewportPosition(
+        uiStore.viewportX + deltaX,
+        uiStore.viewportY + deltaY
+      )
+      
+      uiStore.lastMouseX = e.clientX
+      uiStore.lastMouseY = e.clientY
+    }
+  }
+
+  const handleGlobalMouseUp = () => {
+    if (uiStore.isPanning) {
+      uiStore.endPan()
+      document.removeEventListener('mousemove', handleGlobalMouseMove)
+      document.removeEventListener('mouseup', handleGlobalMouseUp)
+    }
+  }
+
   const handleMouseUp = () => {
     if (uiStore.isDraggingNode) {
       uiStore.endNodeDrag()
@@ -68,19 +105,35 @@ export const MindMap = observer(() => {
     })
   }
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    // Check if clicking on the mindmap container or its direct wrapper
+    const target = e.target as HTMLElement
+    if (target.classList.contains('mindmap-container') || 
+        target.classList.contains('mindmap-wrapper')) {
+      const zoomIncrement = 0.2
+      uiStore.setZoomLevel(uiStore.zoomLevel + zoomIncrement)
+    }
+  }
+
   return (
     <div 
       className="mindmap-container relative w-full h-full overflow-hidden"
+      onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      <div style={{
-        transform: `translate(${uiStore.viewportX}px, ${uiStore.viewportY}px) scale(${uiStore.zoomLevel})`,
-        transformOrigin: 'center',
-        position: 'absolute',
-        width: '100%',
-        height: '100%'
-      }}>
+      <div 
+        className="mindmap-wrapper"
+        style={{
+          transform: `translate(${uiStore.viewportX}px, ${uiStore.viewportY}px) scale(${uiStore.zoomLevel})`,
+          transformOrigin: 'center',
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          cursor: uiStore.isPanning ? 'grabbing' : 'grab'
+        }}
+      >
         {renderConnections()}
         {nodeStore.allNodes.map(node => (
           <NodeComponent 
