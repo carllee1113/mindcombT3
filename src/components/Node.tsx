@@ -4,6 +4,16 @@ import type { INode } from '../store/store'
 import { NodeFactory, type NodeLevel } from '../store/nodeStore'
 import { getRandomColor } from '../utils/colors'
 import { useState } from 'react'
+import { generateElaboration } from '../utils/elaborationService'
+
+// Add utility functions
+const getNodeSizeClass = (node: INode) => {
+  return node.level === 0 ? 'w-48 h-24' : 'w-40 h-16'
+}
+
+const getBorderColorClass = (node: INode) => {
+  return `border-2 ${node.branchColor ? `border-[${node.branchColor}]` : 'border-gray-400'}`
+}
 
 interface NodeProps {
   node: INode
@@ -13,6 +23,7 @@ interface NodeProps {
 const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
   const { uiStore, nodeStore } = useStore()
   const [isHovered, setIsHovered] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) {
@@ -89,15 +100,50 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
     nodeStore.getConnectionStore().addConnection(node.id, newNode.id)
   }
 
+  const handleElaborate = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      setIsLoading(true)
+      const mainNode = nodeStore.getNodeById(nodeStore.centralNodeId)
+      if (!mainNode) return
+
+      const elaboration = await generateElaboration(
+        node.content,
+        mainNode.content
+      )
+
+      // Create new child nodes for each subtopic
+      elaboration.subtopics.forEach((subtopic) => {
+        const newNode = NodeFactory.createChildNode({
+          position: { x: 0, y: 0 },
+          title: subtopic,
+          parentId: node.id,
+          level: (node.level + 1) as NodeLevel,
+          branchColor: node.branchColor
+        })
+        nodeStore.addNode(newNode)
+        nodeStore.getConnectionStore().addConnection(node.id, newNode.id)
+      })
+
+      // Realign nodes after adding new ones
+      nodeStore.alignFirstLayerNodes()
+    } catch (error) {
+      console.error('Elaboration failed:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div
       key={node.id}
       className="relative"
     >
       <div
-        className={`absolute p-4 rounded-lg shadow-md transition-transform ${
-          isCentral ? 'bg-white' : 'bg-white'
-        }`}
+        className={`absolute p-4 rounded-lg shadow-md transition-transform 
+          ${isCentral ? 'bg-white' : 'bg-white'}
+          ${getNodeSizeClass(node)}
+          ${getBorderColorClass(node)}`}
         style={{
           transform: `translate(${node.position.x}px, ${node.position.y}px)`,
           cursor: uiStore.isDraggingNode && uiStore.draggedNodeId === node.id ? 'grabbing' : 'grab',
@@ -115,15 +161,29 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
           {node.content}
         </div>
         {isHovered && (
-          <button
-            className="absolute -right-2 top-1/2 -translate-y-1/2 w-5 h-5 bg-blue-500 rounded-full text-white flex items-center justify-center text-sm hover:bg-blue-600 transition-colors"
-            onClick={handleAddNode}
-          >
-            +
-          </button>
+          <>
+            <button
+              className="absolute -right-2 top-1/2 -translate-y-1/2 w-5 h-5 bg-blue-500 rounded-full text-white flex items-center justify-center text-sm hover:bg-blue-600 transition-colors"
+              onClick={handleAddNode}
+            >
+              +
+            </button>
+            {!isCentral && (
+              <button
+                className={`absolute -left-6 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full 
+                  ${isLoading ? 'bg-gray-400' : 'bg-red-500'} text-white text-xs 
+                  flex items-center justify-center hover:bg-red-600 transition-colors`}
+                onClick={handleElaborate}
+                disabled={isLoading}
+              >
+                {isLoading ? '...' : '×'}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
   )
 })
+
 export default NodeComponent

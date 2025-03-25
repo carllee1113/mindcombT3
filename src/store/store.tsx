@@ -13,7 +13,7 @@ export class RootStore {
   constructor() {
     this.connectionStore = new ConnectionStore()
     this.nodeStore = new NodeStore(this)
-    this.uiStore = new UIStore()
+    this.uiStore = new UIStore(this)  // Pass 'this' to UIStore
     makeAutoObservable(this)
   }
 }

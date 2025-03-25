@@ -2,7 +2,11 @@ import { useStore } from '../store/store'
 import type { INode } from '../store/store'
 
 const Header = () => {
-  const { uiStore, nodeStore } = useStore()
+  const { uiStore, nodeStore } = useStore()  // Add nodeStore here
+
+  const handleViewModeSwitch = () => {
+    uiStore.toggleViewMode();
+  }
 
   return (
     <header className="bg-white shadow-sm py-3 px-6 flex justify-between items-center">
@@ -11,7 +15,8 @@ const Header = () => {
       <div className="flex space-x-2">
         <button 
           className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
-          onClick={() => uiStore.toggleViewMode()}
+          onClick={handleViewModeSwitch}
+          data-view-mindmap
         >
           {uiStore.viewMode === 'mindmap' ? 'View as Markdown' : 'View as Mind Map'}
         </button>

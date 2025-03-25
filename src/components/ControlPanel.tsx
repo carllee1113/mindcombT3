@@ -1,4 +1,4 @@
-import React from 'react'
+// Remove React import as it's not needed
 import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
 
@@ -18,6 +18,12 @@ export const ControlPanel = observer(() => {
         className="bg-white p-2 rounded-lg shadow-md hover:bg-gray-50"
       >
         <span className="text-xl">-</span>
+      </button>
+      <button
+        onClick={() => uiStore.resetZoom()}
+        className="bg-white p-2 rounded-lg shadow-md hover:bg-gray-50"
+      >
+        <span className="text-xl">⟲</span>
       </button>
     </div>
   )

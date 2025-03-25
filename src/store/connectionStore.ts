@@ -38,4 +38,20 @@ export class ConnectionStore {
       this.addConnection(centralNodeId, childId)
     })
   }
+
+  getAllConnections(): Map<string, IConnection> {
+      // Convert array to Map using sourceId as key
+      return new Map(
+        this.connections.map(conn => [conn.sourceId, conn])
+      );
+    }
+  
+    restoreConnectionsFromSavedState(savedConnections: Map<string, IConnection>) {
+      // Convert Map back to array
+      this.connections = Array.from(savedConnections.values());
+    }
+
+    clearConnections() {
+      this.connections = [];
+    }
 }
