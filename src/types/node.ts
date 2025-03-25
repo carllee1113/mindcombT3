@@ -1,10 +1,4 @@
-export type ConnectionPointType = 
-  | 'left'
-  | 'right'
-  | 'leftTop'
-  | 'leftBottom'
-  | 'rightTop'
-  | 'rightBottom'
+export type ConnectionPointType = 'left' | 'right' | 'leftTop' | 'rightTop' | 'leftBottom' | 'rightBottom'
 
 export interface ConnectionPoint {
   x: number

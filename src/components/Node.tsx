@@ -2,22 +2,37 @@ import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
 import type { INode } from '../store/store'
 import { NodeFactory, type NodeLevel } from '../store/nodeStore'
-import { getRandomColor } from '../utils/colors'
+import { getBranchColor } from '../utils/colors'
 import { useState } from 'react'
 import { generateElaboration } from '../utils/elaborationService'
 
 // Add utility functions
 const getNodeSizeClass = (node: INode) => {
-  return node.level === 0 ? 'w-48 h-24' : 'w-40 h-16'
+  return node.level === 0 
+    ? 'min-w-[200px] min-h-[80px] max-w-[300px]' 
+    : 'min-w-[180px] min-h-[60px] max-w-[180px]' // Restrict width for child nodes
 }
 
-const getBorderColorClass = (node: INode) => {
+const getBorderColorClass = (node: INode, isCentral: boolean) => {
+  if (isCentral) {
+    return 'border-4 border-pink-400'
+  }
   return `border-2 ${node.branchColor ? `border-[${node.branchColor}]` : 'border-gray-400'}`
 }
 
 interface NodeProps {
   node: INode
   isCentral: boolean
+}
+
+const truncateContent = (content: string, isCentral: boolean) => {
+  if (isCentral) return content;
+  
+  const lines = content.split('\n');
+  const truncatedLines = lines.slice(0, 3).map(line => 
+    line.length > 30 ? line.substring(0, 27) + '...' : line
+  );
+  return truncatedLines.join('\n');
 }
 
 const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
@@ -40,15 +55,18 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
 
   const handleGlobalMouseMove = (e: MouseEvent) => {
     if (uiStore.isDraggingNode && uiStore.draggedNodeId === node.id) {
+      // Calculate deltas with zoom level
       const deltaX = (e.clientX - uiStore.lastMouseX) / uiStore.zoomLevel
       const deltaY = (e.clientY - uiStore.lastMouseY) / uiStore.zoomLevel
       
-      // Move current node
+      // Update node positions
       const newX = node.position.x + deltaX
       const newY = node.position.y + deltaY
+      
+      // Update the node and its connection points together
       nodeStore.updateNodePosition(node.id, { x: newX, y: newY })
       
-      // Move all child nodes recursively
+      // Move all child nodes recursively with the same zoom-adjusted deltas
       const moveChildNodes = (parentId: string, dx: number, dy: number) => {
         const childNodes = nodeStore.getChildNodes(parentId)
         childNodes.forEach(childNode => {
@@ -61,6 +79,7 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
       
       moveChildNodes(node.id, deltaX, deltaY)
       
+      // Update mouse position for next frame
       uiStore.lastMouseX = e.clientX
       uiStore.lastMouseY = e.clientY
     }
@@ -77,15 +96,32 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
 
   const handleAddNode = (e: React.MouseEvent) => {
     e.stopPropagation()
+    const childNodes = nodeStore.getChildNodes(node.id)
     const centralNode = nodeStore.getNodeById(nodeStore.centralNodeId)
     if (!centralNode) return
   
     const offset = 150
-    const dx = node.position.x - centralNode.position.x
-    
+    const childCount = childNodes.length
+  
+    // Define the two regions (1-4 o'clock and 7-11 o'clock)
+    const upperRegion = { start: -Math.PI / 6, end: Math.PI / 3 }    // ~30° to ~60°
+    const lowerRegion = { start: -5 * Math.PI / 6, end: -Math.PI / 6 } // ~-150° to ~-30°
+  
+    // Determine which region to place the new node
+    let angle
+    if (childCount % 2 === 0) {
+      // Even numbers go to upper region
+      const progress = Math.floor(childCount / 2) / 3 // Divide upper region into 3 parts
+      angle = upperRegion.start + (upperRegion.end - upperRegion.start) * progress
+    } else {
+      // Odd numbers go to lower region
+      const progress = Math.floor(childCount / 2) / 3 // Divide lower region into 3 parts
+      angle = lowerRegion.start + (lowerRegion.end - lowerRegion.start) * progress
+    }
+  
     const newPosition = {
-      x: node.position.x + (dx > 0 ? offset : -offset),
-      y: node.position.y + (Math.random() - 0.5) * 50
+      x: node.position.x + (offset * Math.cos(angle)),
+      y: node.position.y + (offset * Math.sin(angle))
     }
     
     const newNode = NodeFactory.createChildNode({
@@ -93,7 +129,7 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
       title: 'New Subtopic',
       parentId: node.id,
       level: (node.level + 1) as NodeLevel,
-      branchColor: node.branchColor || getRandomColor()
+      branchColor: getBranchColor(childNodes.length)
     })
     
     nodeStore.addNode(newNode)
@@ -140,14 +176,13 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
       className="relative"
     >
       <div
-        className={`absolute p-4 rounded-lg shadow-md transition-transform 
-          ${isCentral ? 'bg-white' : 'bg-white'}
+        className={`absolute p-4 rounded-lg shadow-md transition-transform break-words text-center
+          ${isCentral ? 'bg-white' : 'bg-white line-clamp-3'}
           ${getNodeSizeClass(node)}
-          ${getBorderColorClass(node)}`}
+          ${getBorderColorClass(node, isCentral)}`}
         style={{
           transform: `translate(${node.position.x}px, ${node.position.y}px)`,
           cursor: uiStore.isDraggingNode && uiStore.draggedNodeId === node.id ? 'grabbing' : 'grab',
-          border: `2px solid ${node.branchColor || '#4A5568'}`,
         }}
         onMouseDown={handleMouseDown}
         onDoubleClick={(e) => {
@@ -157,30 +192,32 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="text-sm">
-          {node.content}
-        </div>
-        {isHovered && (
-          <>
-            <button
-              className="absolute -right-2 top-1/2 -translate-y-1/2 w-5 h-5 bg-blue-500 rounded-full text-white flex items-center justify-center text-sm hover:bg-blue-600 transition-colors"
-              onClick={handleAddNode}
-            >
-              +
-            </button>
-            {!isCentral && (
+        <div className="flex flex-col items-center">
+          <div className="text-sm text-center w-full">
+            {truncateContent(node.content, isCentral)}
+          </div>
+          {isHovered && (
+            <div className="flex gap-2 mt-2">
+              {!isCentral && (
+                <button
+                  className={`w-5 h-5 rounded-full 
+                    ${isLoading ? 'bg-gray-400' : 'bg-green-500'} text-white text-xs 
+                    flex items-center justify-center hover:bg-green-600 transition-colors`}
+                  onClick={handleElaborate}
+                  disabled={isLoading}
+                >
+                  {isLoading ? '...' : '×'}
+                </button>
+              )}
               <button
-                className={`absolute -left-6 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full 
-                  ${isLoading ? 'bg-gray-400' : 'bg-red-500'} text-white text-xs 
-                  flex items-center justify-center hover:bg-red-600 transition-colors`}
-                onClick={handleElaborate}
-                disabled={isLoading}
+                className="w-5 h-5 bg-blue-500 rounded-full text-white flex items-center justify-center text-sm hover:bg-blue-600 transition-colors"
+                onClick={handleAddNode}
               >
-                {isLoading ? '...' : '×'}
+                +
               </button>
-            )}
-          </>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

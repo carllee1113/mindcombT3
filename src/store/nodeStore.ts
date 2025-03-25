@@ -1,13 +1,17 @@
 import { makeAutoObservable } from 'mobx'
 import { v4 as uuid } from 'uuid'
-export type ConnectionPointType = 'left' | 'right' | 'leftTop' | 'rightTop' | 'leftBottom' | 'rightBottom'
+// Import only ConnectionPointType from types/node
+import { ConnectionPointType } from '../types/node'
 
+// Keep local interface definition
 export interface ConnectionPoint {
   x: number
   y: number
   type: ConnectionPointType
 }
-import { getRandomColor } from '../utils/colors'
+
+// Add this import instead
+import { getBranchColor } from '../utils/colors'
 
 // Define node types for better type safety
 export type NodeId = string
@@ -35,14 +39,14 @@ export interface INode {
 
 // Node factory for creating different types of nodes
 // Export NodeFactory
-const calculateConnectionPoints = (nodeWidth: number = 100, nodeHeight: number = 50): ConnectionPoint[] => {
+const calculateConnectionPoints = (nodeWidth: number = 180, nodeHeight: number = 60): ConnectionPoint[] => {
   return [
     { x: 0, y: nodeHeight / 2, type: 'left' },
     { x: nodeWidth, y: nodeHeight / 2, type: 'right' },
-    { x: nodeWidth / 4, y: 0, type: 'leftTop' },
-    { x: nodeWidth * 3/4, y: 0, type: 'rightTop' },
-    { x: nodeWidth / 4, y: nodeHeight, type: 'leftBottom' },
-    { x: nodeWidth * 3/4, y: nodeHeight, type: 'rightBottom' }
+    { x: 0, y: 0, type: 'leftTop' },
+    { x: nodeWidth, y: 0, type: 'rightTop' },
+    { x: 0, y: nodeHeight, type: 'leftBottom' },
+    { x: nodeWidth, y: nodeHeight, type: 'rightBottom' }
   ]
 }
 
@@ -51,8 +55,8 @@ export class NodeFactory {
     return {
       id: uuid(),
       position,
-      title: 'Main idea or concept',
-      content: 'Main idea or concept',
+      title: 'SCORE Story Element',
+      content: 'SCORE Storytelling Framework',
       level: 0,
       connectionPoints: calculateConnectionPoints(),
       branchColor: '#4A5568',
@@ -83,6 +87,15 @@ export class NodeFactory {
   }
 }
 
+// Add predefined colors for default branches
+const defaultBranchColors = [
+  '#FF6B6B', // coral red
+  '#4ECDC4', // turquoise
+  '#45B7D1', // sky blue
+  '#96CEB4', // sage green
+  '#FFEEAD'  // soft yellow
+];
+
 export class NodeStore {
   private nodes: Map<NodeId, INode> = new Map()
   private _centralNodeId: NodeId = ''
@@ -106,39 +119,79 @@ export class NodeStore {
     const centerX = window.innerWidth / 2
     const centerY = window.innerHeight / 2
   
-    // Create central node
     const centralNode = NodeFactory.createCentralNode({ x: centerX, y: centerY })
     this._centralNodeId = centralNode.id
     this.addNode(centralNode)
   
     const childNodeIds: NodeId[] = []
+    const defaultSubtopics = [
+      'Situation (Context, background, setup)',
+      'Complication (Problem, conflict, challenge)',
+      'Opportunity (Solution, path, possibility)',
+      'Resolution (Action, outcome, solution)',
+      'Effect (Impact, result, change)'
+    ]
   
-    // Create child nodes with temporary positions
-    for (let i = 0; i < 4; i++) {
+    // Create child nodes with specific colors using getBranchColor
+    defaultSubtopics.forEach((topic, index) => {
       const childNode = NodeFactory.createChildNode({
-        position: { x: centerX, y: centerY }, // Temporary position
-        title: `Subtopic ${i + 1}`,
+        position: { x: centerX, y: centerY },
+        title: topic,
         parentId: centralNode.id,
         level: 1,
-        branchColor: getRandomColor()
+        branchColor: getBranchColor(index)
       })
       this.addNode(childNode)
       childNodeIds.push(childNode.id)
-    }
+    })
   
-    // Align the nodes in a circle
     this.alignFirstLayerNodes()
-  
-    // Initialize connections
     this.rootStore.connectionStore.initializeDefaultConnections(centralNode.id, childNodeIds)
   }
 
   private getEmptyPosition(parentNode: INode): NodePosition {
-    const offset = 200
-    const angle = Math.random() * 2 * Math.PI
+    // Get all existing child nodes of the parent
+    const childNodes = this.getChildNodes(parentNode.id)
+    
+    // Base offset from parent node
+    const baseOffset = 200
+    
+    // If no children exist, place first child at a default position
+    if (childNodes.length === 0) {
+      return {
+        x: parentNode.position.x + baseOffset,
+        y: parentNode.position.y
+      }
+    }
+  
+    // Find the least crowded angle for the new node
+    const angles = 8 // Divide the space into 8 sectors
+    const sectorSize = (2 * Math.PI) / angles
+    let bestAngle = 0
+    let minNodesInSector = Infinity
+  
+    // Check each sector for number of nodes
+    for (let i = 0; i < angles; i++) {
+      const sectorStart = i * sectorSize
+      const nodesInSector = childNodes.filter(node => {
+        const angle = Math.atan2(
+          node.position.y - parentNode.position.y,
+          node.position.x - parentNode.position.x
+        )
+        return angle >= sectorStart && angle < sectorStart + sectorSize
+      }).length
+  
+      if (nodesInSector < minNodesInSector) {
+        minNodesInSector = nodesInSector
+        bestAngle = sectorStart + (sectorSize / 2)
+      }
+    }
+  
+    // Calculate position using the best angle and add some randomness
+    const randomOffset = (Math.random() - 0.5) * 50
     return {
-      x: parentNode.position.x + (offset * Math.cos(angle)),
-      y: parentNode.position.y + (offset * Math.sin(angle))
+      x: parentNode.position.x + (baseOffset * Math.cos(bestAngle)) + randomOffset,
+      y: parentNode.position.y + (baseOffset * Math.sin(bestAngle)) + randomOffset
     }
   }
 
@@ -222,22 +275,39 @@ export class NodeStore {
     const firstLayerNodes = this.getChildNodes(this.centralNodeId)
     if (firstLayerNodes.length === 0) return
   
-    // Calculate positions in a circle around the central node
-    const radius = 200 // Distance from central node
-    const startAngle = -Math.PI / 6 // Start from 1 o'clock position (-30 degrees)
-    const angleStep = (2 * Math.PI) / firstLayerNodes.length
+    // Adjust the regions to spread nodes more evenly
+    const upperRegion = { start: -Math.PI / 12, end: Math.PI / 2.5 }    // Wider spread for right side
+    const lowerRegion = { start: -Math.PI, end: -Math.PI / 3 } // Wider spread for left side
+    const radius = 300 // Keep increased distance
   
+    const totalNodes = firstLayerNodes.length
+    const leftSideCount = Math.ceil(totalNodes / 2)
+    const rightSideCount = Math.floor(totalNodes / 2)
+
     firstLayerNodes.forEach((node, index) => {
-      const angle = startAngle + (angleStep * index)
-      const newX = centralNode.position.x + (radius * Math.cos(angle))
-      const newY = centralNode.position.y + (radius * Math.sin(angle))
+      let angle
+      if (index < leftSideCount) {
+        // Left side nodes - ensure even spacing
+        const progress = leftSideCount > 1 ? index / (leftSideCount - 1) : 0.5
+        angle = lowerRegion.start + (lowerRegion.end - lowerRegion.start) * progress
+      } else {
+        // Right side nodes - ensure even spacing
+        const rightIndex = index - leftSideCount
+        const progress = rightSideCount > 1 ? rightIndex / (rightSideCount - 1) : 0.5
+        angle = upperRegion.start + (upperRegion.end - upperRegion.start) * progress
+      }
+
+      // Add slight radius variation to prevent overlap
+      const radiusVariation = radius + (index * 20)
+      const newX = centralNode.position.x + (radiusVariation * Math.cos(angle))
+      const newY = centralNode.position.y + (radiusVariation * Math.sin(angle))
   
       this.updateNodePosition(node.id, {
         x: newX,
         y: newY
       })
     })
-  }
+}
 
   updateFromMarkdown(lines: string[]) {
     lines.forEach(line => {

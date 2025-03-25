@@ -15,7 +15,7 @@ export async function generateElaboration(
   mainTheme: string, 
   numSubtopics: number = 4
 ): Promise<ElaborationResponse> {
-  const prompt = `Given the main theme "${mainTheme}" and the subtopic "${nodeContent}", generate ${numSubtopics} relevant and logical subtopics. Return the response in the following JSON format: {"subtopics": ["subtopic1", "subtopic2", ...]}`;
+  const prompt = `Theme: "${mainTheme}", Topic: "${nodeContent}". Generate ${numSubtopics} concise, innovative subtopics. Format: {"subtopics": ["key phrase 1", "key phrase 2", ...]}. Keep each subtopic under 5 words.`;
 
   try {
     const response = await fetch(`${API_CONFIG.OPENROUTER.BASE_URL}/chat/completions`, {

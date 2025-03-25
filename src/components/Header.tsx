@@ -1,8 +1,14 @@
 import { useStore } from '../store/store'
 import type { INode } from '../store/store'
+import { generateFreeMindXML, downloadFreeMind } from '../utils/exportFreeMind'
 
 const Header = () => {
-  const { uiStore, nodeStore } = useStore()  // Add nodeStore here
+  const { uiStore, nodeStore } = useStore()
+
+  const handleExport = () => {
+    const xml = generateFreeMindXML(nodeStore.allNodes, nodeStore.centralNodeId)
+    downloadFreeMind(xml)
+  }
 
   const handleViewModeSwitch = () => {
     uiStore.toggleViewMode();
@@ -13,6 +19,12 @@ const Header = () => {
       <h1 className="text-2xl font-bold text-indigo-700">Mindcomb T3</h1>
       
       <div className="flex space-x-2">
+        <button 
+          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+          onClick={handleExport}
+        >
+          Export
+        </button>
         <button 
           className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
           onClick={handleViewModeSwitch}
