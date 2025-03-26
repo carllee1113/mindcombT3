@@ -11,6 +11,10 @@ interface ConnectionLineProps {
 }
 
 const ConnectionLine = observer(({ sourceNode, targetNode, color, sourcePoint, targetPoint }: ConnectionLineProps) => {
+  if (!sourceNode?.position || !targetNode?.position || !sourcePoint || !targetPoint) {
+    return null;
+  }
+
   // Recalculate connection points based on current positions
   const dx = targetNode.position.x - sourceNode.position.x
 

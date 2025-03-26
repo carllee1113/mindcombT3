@@ -39,7 +39,8 @@ export interface INode {
 
 // Node factory for creating different types of nodes
 // Export NodeFactory
-const calculateConnectionPoints = (nodeWidth: number = 180, nodeHeight: number = 60): ConnectionPoint[] => {
+// Make the function exportable
+export const calculateConnectionPoints = (nodeWidth: number = 180, nodeHeight: number = 60): ConnectionPoint[] => {
   return [
     { x: 0, y: nodeHeight / 2, type: 'left' },
     { x: nodeWidth, y: nodeHeight / 2, type: 'right' },
@@ -88,14 +89,7 @@ export class NodeFactory {
 }
 
 // Add predefined colors for default branches
-const defaultBranchColors = [
-  '#FF6B6B', // coral red
-  '#4ECDC4', // turquoise
-  '#45B7D1', // sky blue
-  '#96CEB4', // sage green
-  '#FFEEAD'  // soft yellow
-];
-
+// Remove the defaultBranchColors array and continue with NodeStore class
 export class NodeStore {
   private nodes: Map<NodeId, INode> = new Map()
   private _centralNodeId: NodeId = ''

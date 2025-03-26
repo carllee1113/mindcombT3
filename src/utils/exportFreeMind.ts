@@ -37,3 +37,64 @@ export function downloadFreeMind(xml: string, filename: string = 'mindmap.mm'): 
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 }
+
+
+export function parseFreeMindXML(xmlContent: string): { nodes: INode[], centralNodeId: string } {
+  const parser = new DOMParser()
+  const xmlDoc = parser.parseFromString(xmlContent, 'application/xml')
+  const nodes: INode[] = []
+  let centralNodeId = ''
+
+  function processNode(element: Element, parentId: string | null = null, level: number = 0): void {
+    const id = element.getAttribute('ID') || crypto.randomUUID()
+    const text = element.getAttribute('TEXT') || ''
+    
+    if (level === 0) {
+      centralNodeId = id
+    }
+
+    const node: INode = {
+      id,
+      title: text,
+      content: text,
+      parentId: parentId || undefined,
+      level: level as 0 | 1 | 2 | 3,
+      position: { x: 0, y: 0 },
+      connectionPoints: [],
+      branchColor: '',
+      x: 0,
+      y: 0
+    }
+    nodes.push(node)
+
+    // Process all child nodes recursively
+    const childNodes = Array.from(element.children).filter(child => child.tagName === 'node')
+    childNodes.forEach(childElement => {
+      processNode(childElement as Element, id, level + 1)
+    })
+  }
+
+  const rootNode = xmlDoc.querySelector('map > node')
+  if (rootNode) {
+    processNode(rootNode)
+  }
+
+  return { nodes, centralNodeId }
+}
+
+export function importFreeMind(file: File): Promise<{ nodes: INode[], centralNodeId: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string
+        const result = parseFreeMindXML(content)
+        resolve(result)
+      } catch (error) {
+        reject(error)
+      }
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsText(file)
+  })
+}
