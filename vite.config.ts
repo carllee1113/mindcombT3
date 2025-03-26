@@ -1,22 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 3001,
-    strictPort: true,
-    hmr: {
-      clientPort: 3001
-    }
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  },
-  optimizeDeps: {
-    force: true
+  base: '/mindcombT3/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   }
 })

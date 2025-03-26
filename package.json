@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "homepage": "https://carllee1113.github.io/mindcomb",
+  "homepage": "https://carllee1113.github.io/mindcombT3",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
