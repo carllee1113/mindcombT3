@@ -190,7 +190,14 @@ const Header = () => {
 
   return (
     <header className="bg-white shadow-sm py-3 px-6 flex justify-between items-center">
-      <h1 className="text-2xl font-bold text-indigo-700">Mindcomb T3</h1>
+      <div className="flex items-center gap-2">
+        <img 
+          src="public\mindcomb-logo.png" 
+          alt="Mindcomb Logo" 
+          className="h-8 w-8"
+        />
+        <h1 className="text-2xl font-bold text-indigo-700">Mindcomb</h1>
+      </div>
       
       <div className="flex space-x-2">
         <input
