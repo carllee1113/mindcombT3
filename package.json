@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "clean": "rimraf dist node_modules/.vite",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist --message \"Deploy to GitHub pages\" --dotfiles"
+    "deploy": "gh-pages -d dist --git git"
   },
   "dependencies": {
     "mobx": "^6.12.0",
