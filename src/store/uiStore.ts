@@ -27,6 +27,7 @@ export class UIStore {
   isPanning: boolean = false
   viewMode: 'mindmap' | 'markdown' = 'mindmap'
   markdownContent: string = ''
+  showLandingPage: boolean = true
 
   constructor(rootStore: RootStore) {
     this.rootStore = rootStore
@@ -236,5 +237,9 @@ export class UIStore {
     connections: Map<string, IConnection>;
   }) {
     this.savedMindMapState = state;
+  }
+
+  setShowLandingPage(show: boolean) {
+    this.showLandingPage = show
   }
 }
