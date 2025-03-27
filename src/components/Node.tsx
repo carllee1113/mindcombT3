@@ -2,7 +2,7 @@ import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
 import type { INode } from '../store/store'
 import { NodeFactory, type NodeLevel } from '../store/nodeStore'
-import { getBranchColor } from '../utils/colors'
+import { getBranchColor, branchColors } from '../utils/colors'
 import { useState } from 'react'
 import { generateElaboration } from '../utils/elaborationService'
 
@@ -11,13 +11,6 @@ const getNodeSizeClass = (node: INode) => {
   return node.level === 0 
     ? 'min-w-[200px] min-h-[80px] max-w-[300px]' 
     : 'min-w-[180px] min-h-[60px] max-w-[180px]' // Restrict width for child nodes
-}
-
-const getBorderColorClass = (node: INode, isCentral: boolean) => {
-  if (isCentral) {
-    return 'border-4 border-pink-400'
-  }
-  return `border-2 ${node.branchColor ? `border-[${node.branchColor}]` : 'border-gray-400'}`
 }
 
 interface NodeProps {
@@ -35,10 +28,14 @@ const truncateContent = (content: string, isCentral: boolean) => {
   return truncatedLines.join('\n');
 }
 
-const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
+// Remove NodeComponent and keep only the main Node component
+const Node = observer(({ node, isCentral }: NodeProps) => {
   const { uiStore, nodeStore } = useStore()
   const [isHovered, setIsHovered] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+
+  const nodeColor = isCentral ? '#FF0000' : (node.branchColor || '#666666')
+  const backgroundColor = nodeColor + '4D'
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) {
@@ -124,12 +121,25 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
       y: node.position.y + (offset * Math.sin(angle))
     }
     
+    // Get all existing branch colors from direct children of central node
+    const allFirstLevelNodes = nodeStore.getChildNodes(nodeStore.centralNodeId)
+    const usedColors = new Set(allFirstLevelNodes.map(child => child.branchColor))
+    
+    let nextColor: string
+    if (isCentral) {
+      // Find the first unused color from the branchColors array
+      const unusedColor = branchColors.find((color: string) => !usedColors.has(color))
+      nextColor = unusedColor || getBranchColor(usedColors.size)
+    } else {
+      nextColor = node.branchColor
+    }
+    
     const newNode = NodeFactory.createChildNode({
       position: newPosition,
       title: 'New Subtopic',
       parentId: node.id,
       level: (node.level + 1) as NodeLevel,
-      branchColor: getBranchColor(childNodes.length)
+      branchColor: nextColor
     })
     
     nodeStore.addNode(newNode)
@@ -149,13 +159,18 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
       )
 
       // Create new child nodes for each subtopic
-      elaboration.subtopics.forEach((subtopic) => {
+      elaboration.subtopics.forEach((subtopic, index) => {
+        const firstLevelNodes = nodeStore.getChildNodes(nodeStore.centralNodeId)
+        const existingColors = new Set(firstLevelNodes.map(child => child.branchColor))
+        
         const newNode = NodeFactory.createChildNode({
           position: { x: 0, y: 0 },
           title: subtopic,
           parentId: node.id,
           level: (node.level + 1) as NodeLevel,
-          branchColor: node.branchColor
+          branchColor: isCentral 
+            ? getBranchColor(existingColors.size + index)
+            : node.branchColor
         })
         nodeStore.addNode(newNode)
         nodeStore.getConnectionStore().addConnection(node.id, newNode.id)
@@ -178,11 +193,12 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
       <div
         className={`absolute p-4 rounded-lg shadow-md transition-transform break-words text-center
           ${isCentral ? 'bg-white' : 'bg-white line-clamp-3'}
-          ${getNodeSizeClass(node)}
-          ${getBorderColorClass(node, isCentral)}`}
+          ${getNodeSizeClass(node)}`}
         style={{
           transform: `translate(${node.position.x}px, ${node.position.y}px)`,
           cursor: uiStore.isDraggingNode && uiStore.draggedNodeId === node.id ? 'grabbing' : 'grab',
+          border: `2px solid ${nodeColor}`,
+          backgroundColor: backgroundColor
         }}
         onMouseDown={handleMouseDown}
         onDoubleClick={(e) => {
@@ -223,4 +239,4 @@ const NodeComponent = observer(({ node, isCentral }: NodeProps) => {
   )
 })
 
-export default NodeComponent
+export default Node
