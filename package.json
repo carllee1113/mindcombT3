@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "homepage": "https://carllee1113.github.io/mindcombT3",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && npx vite build",
+    "build": "tsc && vite build",
+    "vercel-build": "npm install && npm run build",
     "preview": "vite preview",
     "clean": "rimraf dist node_modules/.vite"
   },
