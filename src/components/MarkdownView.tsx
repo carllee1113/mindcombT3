@@ -1,33 +1,54 @@
 import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
 import { useState, useEffect } from 'react'
-import type { INode } from '../store/nodeStore'
 
 const MarkdownView = observer(() => {
-  const { nodeStore } = useStore()
+  const { nodeStore, uiStore } = useStore()
   const [markdown, setMarkdown] = useState('')
 
   useEffect(() => {
-    setMarkdown(generateMarkdown())
-  }, [nodeStore.allNodes])
+    if (uiStore.viewMode === 'markdown') {
+      const generateMarkdown = () => {
+        const nodes = nodeStore.allNodes
+        const centralNode = nodeStore.getNodeById(nodeStore.centralNodeId)
+        if (!centralNode || nodes.length === 0) return ''
 
-  const generateMarkdown = () => {
-    const centralNode = nodeStore.getNodeById(nodeStore.centralNodeId)
-    if (!centralNode) return ''
+        const cleanContent = (content: string): string => {
+          return content
+            .replace(/\[!\[CDATA\[(.*?)\]\]\]/g, '$1')
+            .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&apos;/g, "'")
+            .trim()
+        }
 
-    const processNode = (node: INode, level: number): string => {
-      const header = '#'.repeat(level)
-      let markdown = `${header} ${node.content}\n`
-      
-      const children = nodeStore.getChildNodes(node.id)
-      children.forEach(child => {
-        markdown += processNode(child, level + 1)
-      })
-      
-      return markdown
+        const buildMarkdown = (nodeId: string, actualLevel: number = 1): string => {
+          const node = nodeStore.getNodeById(nodeId)
+          if (!node) return ''
+
+          // Use actual level for markdown, regardless of node's stored level
+          const nodeText = node.title || node.content
+          let md = `${'#'.repeat(actualLevel)} ${cleanContent(nodeText)}\n\n`
+          
+          const childNodes = nodeStore.getChildNodes(nodeId)
+          childNodes.forEach(childNode => {
+            md += buildMarkdown(childNode.id, actualLevel + 1)
+          })
+          return md
+        }
+
+        return buildMarkdown(centralNode.id)
+      }
+
+      setMarkdown(generateMarkdown())
     }
+  }, [nodeStore.allNodes, nodeStore.centralNodeId, uiStore.viewMode])
 
-    return processNode(centralNode, 1)
+  // Only render when viewMode is 'markdown'
+  if (uiStore.viewMode !== 'markdown') {
+    return null
   }
 
   return (

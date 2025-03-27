@@ -25,6 +25,20 @@ const Header = () => {
     try {
       const { nodes, centralNodeId } = await importFreeMind(file)
       
+      // 在添加节点之前验证节点结构
+      const validateNode = (node: INode) => {
+        if (!node.id || !node.content || node.level === undefined) {
+          throw new Error(`Invalid node structure: ${JSON.stringify(node)}`)
+        }
+        // Remove level restriction, keep it as a number
+        if (typeof node.level !== 'number') {
+          node.level = 1
+        }
+      }
+      
+      // 验证所有节点
+      nodes.forEach(validateNode)
+
       // Clear existing nodes and connections
       nodeStore.clearNonCentralNodes()
       nodeStore.getConnectionStore().clearConnections()
@@ -81,7 +95,7 @@ const Header = () => {
             ...node,
             connectionPoints: calculateConnectionPoints(),
             position: { x: 0, y: 0 },
-            level: (nodeLevels.get(node.id) || 1) as 0 | 1 | 2 | 3,
+            level: nodeLevels.get(node.id) || 1, // Remove the type assertion
             branchColor: nodeColors.get(node.id) || getBranchColor(0)
           }
           nodeStore.addNode(newNode)
@@ -163,9 +177,14 @@ const Header = () => {
                                 baseAngle * (1 - angleConstraints.smoothing)
             const childAngle = constrainAngle(smoothedAngle, parentAngle, isRightSide)
             
+            // Remove these local spacing configurations
+            const baseRadius = nodeStore.spacing.baseRadius
+            const levelSpacing = nodeStore.spacing.levelSpacing
+            
+            // Later in the positionChildNodes function
             const childRadius = level === 2 ? 
-              levelSpacing.second : 
-              levelSpacing.first + (level * levelSpacing.other * 0.8)
+            levelSpacing.second : 
+            levelSpacing.other
             
             const childX = parentPos.x + (childRadius * Math.cos(childAngle))
             const childY = parentPos.y + (childRadius * Math.sin(childAngle))
@@ -185,6 +204,15 @@ const Header = () => {
       }
     } catch (error) {
       console.error('Failed to import mind map:', error)
+    }
+
+    // After all nodes are processed and positioned, update markdown content
+    const markdown = generateMarkdownFromNodes(nodeStore.allNodes, nodeStore.centralNodeId)
+    uiStore.setMarkdownContent(markdown)
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -273,3 +301,23 @@ const Header = () => {
 }
 
 export default Header
+
+// Add this helper function
+const generateMarkdownFromNodes = (nodes: INode[], centralNodeId: string): string => {
+  const centralNode = nodes.find(node => node.id === centralNodeId)
+  if (!centralNode) return ''
+
+  const processNode = (node: INode, level: number): string => {
+    const header = '#'.repeat(level)
+    let markdown = `${header} ${node.content}\n`
+    
+    const children = nodes.filter(n => n.parentId === node.id)
+    children.forEach(child => {
+      markdown += processNode(child, level + 1)
+    })
+    
+    return markdown
+  }
+
+  return processNode(centralNode, 1)
+}

@@ -1,40 +1,34 @@
 import { makeAutoObservable } from 'mobx'
 import { v4 as uuid } from 'uuid'
-// Import only ConnectionPointType from types/node
-import { ConnectionPointType } from '../types/node'
+import { getBranchColor } from '../utils/colors'
 
-// Keep local interface definition
+// All types and interfaces consolidated here
+export type ConnectionPointType = 'left' | 'right' | 'leftTop' | 'rightTop' | 'leftBottom' | 'rightBottom'
+export type NodeId = string
+export type NodeLevel = number // Changed from 0|1|2|3 to number to remove level restriction
+
 export interface ConnectionPoint {
   x: number
   y: number
   type: ConnectionPointType
 }
 
-// Add this import instead
-import { getBranchColor } from '../utils/colors'
-
-// Define node types for better type safety
-export type NodeId = string
-export type NodeLevel = 0 | 1 | 2 | 3
-
-// Separate interface for node position
 interface NodePosition {
   x: number
   y: number
 }
 
-// Base node interface
 export interface INode {
-  id: string;
-  position: NodePosition;
-  title: string;
-  content: string;
-  level: NodeLevel;
-  parentId?: string;
-  connectionPoints: ConnectionPoint[];
-  branchColor: string;
-  x: number;
-  y: number;
+  id: string
+  position: NodePosition
+  title: string
+  content: string
+  level: NodeLevel
+  parentId?: string
+  connectionPoints: ConnectionPoint[]
+  branchColor: string
+  x: number
+  y: number
 }
 
 // Node factory for creating different types of nodes
@@ -51,6 +45,9 @@ export const calculateConnectionPoints = (nodeWidth: number = 180, nodeHeight: n
   ]
 }
 
+// Remove the standalone calculateConnectionPoints function
+// and keep it only as a class method
+
 export class NodeFactory {
   static createCentralNode(position: NodePosition): INode {
     return {
@@ -59,7 +56,7 @@ export class NodeFactory {
       title: 'SCORE Story Element',
       content: 'SCORE Storytelling Framework',
       level: 0,
-      connectionPoints: calculateConnectionPoints(),
+      connectionPoints: calculateConnectionPoints(), // Use the global function
       branchColor: '#4A5568',
       x: position.x,
       y: position.y
@@ -80,7 +77,7 @@ export class NodeFactory {
       content: params.title,
       level: params.level,
       parentId: params.parentId,
-      connectionPoints: calculateConnectionPoints(),
+      connectionPoints: calculateConnectionPoints(), // Use the global function
       branchColor: params.branchColor,
       x: params.position.x,
       y: params.position.y
@@ -88,12 +85,37 @@ export class NodeFactory {
   }
 }
 
-// Add predefined colors for default branches
-// Remove the defaultBranchColors array and continue with NodeStore class
 export class NodeStore {
   private nodes: Map<NodeId, INode> = new Map()
   private _centralNodeId: NodeId = ''
   private rootStore: any // We'll type this properly later
+
+  // Spacing configuration
+  // Change from private to public
+  public readonly spacing = {
+    baseRadius: 300,
+    levelSpacing: {
+      first: 300,
+      second: 150,   // 50% of first
+      other: 90      // 30% of first
+    },
+    
+    // Angle constraints for node distribution
+    angleConstraints: {
+      maxDeviation: Math.PI / 8,  // Maximum angle between nodes
+      preferredAngles: {
+        left: [-Math.PI * 0.8, -Math.PI / 3],    // Left side spread
+        right: [-Math.PI / 6, Math.PI / 2.5]     // Right side spread
+      },
+      smoothing: 0.2  // Controls how smooth the node distribution is (0-1)
+    },
+    
+    // Individual node dimensions
+    nodeSize: {
+      width: 180,
+      height: 60
+    }
+  }
 
   constructor(rootStore: any) {
     this.rootStore = rootStore
@@ -144,13 +166,15 @@ export class NodeStore {
   }
 
   private getEmptyPosition(parentNode: INode): NodePosition {
-    // Get all existing child nodes of the parent
     const childNodes = this.getChildNodes(parentNode.id)
     
-    // Base offset from parent node
-    const baseOffset = 200
+    // Use correct spacing based on parent's level
+    const baseOffset = parentNode.level === 0 
+      ? this.spacing.levelSpacing.first
+      : parentNode.level === 1 
+        ? this.spacing.levelSpacing.second 
+        : this.spacing.levelSpacing.other
     
-    // If no children exist, place first child at a default position
     if (childNodes.length === 0) {
       return {
         x: parentNode.position.x + baseOffset,
@@ -182,7 +206,9 @@ export class NodeStore {
     }
   
     // Calculate position using the best angle and add some randomness
-    const randomOffset = (Math.random() - 0.5) * 50
+    // In getEmptyPosition method
+    const randomFactor = parentNode.level === 0 ? 25 : 15;
+    const randomOffset = (Math.random() - 0.5) * randomFactor;
     return {
       x: parentNode.position.x + (baseOffset * Math.cos(bestAngle)) + randomOffset,
       y: parentNode.position.y + (baseOffset * Math.sin(bestAngle)) + randomOffset
@@ -269,11 +295,12 @@ export class NodeStore {
     const firstLayerNodes = this.getChildNodes(this.centralNodeId)
     if (firstLayerNodes.length === 0) return
   
-    // Adjust the regions to spread nodes more evenly
-    const upperRegion = { start: -Math.PI / 12, end: Math.PI / 2.5 }    // Wider spread for right side
-    const lowerRegion = { start: -Math.PI, end: -Math.PI / 3 } // Wider spread for left side
-    const radius = 300 // Keep increased distance
-  
+    const upperRegion = { start: -Math.PI / 12, end: Math.PI / 2.5 }
+    const lowerRegion = { start: -Math.PI, end: -Math.PI / 3 }
+    
+    // Use spacing configuration
+    const radius = this.spacing.baseRadius
+    
     const totalNodes = firstLayerNodes.length
     const leftSideCount = Math.ceil(totalNodes / 2)
     const rightSideCount = Math.floor(totalNodes / 2)
@@ -292,7 +319,8 @@ export class NodeStore {
       }
 
       // Add slight radius variation to prevent overlap
-      const radiusVariation = radius + (index * 20)
+      // Modified spacing calculation
+      const radiusVariation = radius // Remove the index multiplication
       const newX = centralNode.position.x + (radiusVariation * Math.cos(angle))
       const newY = centralNode.position.y + (radiusVariation * Math.sin(angle))
   
