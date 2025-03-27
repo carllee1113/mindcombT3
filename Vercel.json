@@ -1,16 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "vite",
   "builds": [
     {
       "src": "package.json",
       "use": "@vercel/node",
       "config": {
-        "buildCommand": "chmod +x ./node_modules/.bin/vite && npm run build"
+        "buildCommand": "cd $VERCEL_BUILD_OUTPUT_DIR && npm install && npm run build"
       }
     }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/dist/$1" }
   ]
 }
