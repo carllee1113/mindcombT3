@@ -1,5 +1,4 @@
 import { API_CONFIG } from '../config/apiConfig';
-import { handleError } from './errorHandler';
 
 export interface ElaborationResponse {
   subtopics: string[];
@@ -15,55 +14,45 @@ export async function generateElaboration(
   mainTheme: string, 
   numSubtopics: number = 4
 ): Promise<ElaborationResponse> {
-  const prompt = `Theme: "${mainTheme}", Topic: "${nodeContent}". Generate ${numSubtopics} concise, innovative subtopics. Format: {"subtopics": ["key phrase 1", "key phrase 2", ...]}. Keep each subtopic under 5 words.`;
+  const prompt = `Given the main theme "${mainTheme}" and the topic "${nodeContent}", generate ${numSubtopics} innovative subtopics. Format each subtopic as a concise phrase (max 5 words). Each subtopic should be unique and directly related to both the theme and topic. Return the subtopics as a numbered list. No prunctuation, no example, no conslusion, no summary, no repeated words, no numberings. `;
 
   try {
     const response = await fetch(`${API_CONFIG.OPENROUTER.BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${API_CONFIG.OPENROUTER.API_KEY}`,
-        "HTTP-Referer": API_CONFIG.OPENROUTER.REFERER,
-        "X-Title": API_CONFIG.OPENROUTER.TITLE,
+        "HTTP-Referer": API_CONFIG.OPENROUTER.SITE_URL,
+        "X-Title": API_CONFIG.OPENROUTER.SITE_NAME,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "deepseek/deepseek-chat-v3-0324:free",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-        max_tokens: 1000
+        messages: [{ role: "user", content: prompt }]
       })
     });
 
     if (!response.ok) {
-      const error = new Error(`API request failed with status ${response.status}`) as ElaborationError;
-      error.status = response.status;
-      error.details = await response.json().catch(() => undefined);
-      throw error;
+      throw new Error(`API request failed: ${response.status}`);
     }
 
-    const completion = await response.json();
+    const data = await response.json();
+    if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid API response format');
+    }
+
+    const content = data.choices[0].message.content;
+    if (!content) {
+      throw new Error('Empty response content');
+    }
     
-    try {
-      const content = completion.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('Empty response from API');
-      }
-
-      // Clean the response string before parsing
-      const cleanContent = content.replace(/```json|\```/g, '').trim();
-      const parsedResponse = JSON.parse(cleanContent);
-      
-      if (!Array.isArray(parsedResponse.subtopics)) {
-        throw new Error('Invalid response format: subtopics is not an array');
-      }
-
-      return { subtopics: parsedResponse.subtopics };
-    } catch (parseError) {
-      console.error('Response parsing error:', completion.choices[0]?.message?.content);
-      throw new Error('Failed to parse API response');
+    const subtopics = content.split('\n').filter(Boolean);
+    if (!subtopics.length) {
+      throw new Error('No valid subtopics generated');
     }
+
+    return { subtopics };
   } catch (error) {
-    handleError(error, 'Failed to generate elaboration');
-    throw error;
+    console.error('Elaboration error:', error);
+    throw new Error('Failed to generate elaboration');
   }
 }
