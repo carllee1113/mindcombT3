@@ -5,9 +5,12 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "installCommand": "npm install",
-        "buildCommand": "npx tsc && vite build"
+        "installCommand": "npm install typescript -g && npm install",
+        "buildCommand": "tsc && vite build"
       }
     }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
