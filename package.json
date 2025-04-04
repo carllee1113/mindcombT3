@@ -26,6 +26,7 @@
     "@types/react-dom": "^18.2.18",
     "@types/node": "^20.17.27",
     "@types/uuid": "^10.0.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "@vercel/node": "^4.0.0"  // Add this line
   }
 }
