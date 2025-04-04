@@ -2,14 +2,18 @@ import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
 import { useState, useEffect } from 'react'
 
+
 const MarkdownView = observer(() => {
   const { nodeStore, uiStore } = useStore()
   const [markdown, setMarkdown] = useState('')
 
+  // This effect will run whenever the node content changes
   useEffect(() => {
+    // Only generate markdown when in markdown view
     if (uiStore.viewMode === 'markdown') {
       const generateMarkdown = () => {
-        const nodes = nodeStore.allNodes
+        // Access the observable collection to ensure proper reactivity
+        const nodes = Array.from(nodeStore.allNodes)
         const centralNode = nodeStore.getNodeById(nodeStore.centralNodeId)
         if (!centralNode || nodes.length === 0) return ''
 
@@ -42,9 +46,21 @@ const MarkdownView = observer(() => {
         return buildMarkdown(centralNode.id)
       }
 
+      // Update markdown content
       setMarkdown(generateMarkdown())
     }
-  }, [nodeStore.allNodes, nodeStore.centralNodeId, uiStore.viewMode])
+  }, [
+    // Track node content changes more precisely
+    nodeStore.allNodes.length,
+    ...Array.from(nodeStore.allNodes).flatMap(node => [
+      node.id,
+      node.title,
+      node.content,
+      nodeStore.getChildNodes(node.id).length
+    ]),
+    uiStore.viewMode,
+    nodeStore.centralNodeId
+  ])
 
   // Only render when viewMode is 'markdown'
   if (uiStore.viewMode !== 'markdown') {

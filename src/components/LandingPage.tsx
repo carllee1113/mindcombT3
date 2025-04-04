@@ -27,9 +27,9 @@ const LandingPage = () => {
           </div>
           <div className="md:w-1/2 mt-10 md:mt-0">
             <img 
-              src="/mindmap-preview.png" 
-              alt="Mindcomb Preview" 
-              className="rounded-lg shadow-xl"
+              src="/templates/0404blog002.png" 
+              alt="SCORE Framework Mind Map Preview" 
+              className="rounded-lg shadow-xl w-full h-auto"
             />
           </div>
         </div>

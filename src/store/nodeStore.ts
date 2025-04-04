@@ -239,6 +239,7 @@ export class NodeStore {
     if (node) {
       node.content = content;
       this.nodes.set(id, node);
+      this.nodes.set(id, node);
     }
   }
 

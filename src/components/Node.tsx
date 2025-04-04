@@ -185,6 +185,38 @@ const Node = observer(({ node, isCentral }: NodeProps) => {
     }
   }
 
+  const handleDeleteNode = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    // Don't allow deleting the central node
+    if (isCentral) return
+    
+    // Get the parent node and all child nodes
+    const parentId = node.parentId
+    if (!parentId) return
+    
+    const childNodes = nodeStore.getChildNodes(node.id)
+    const connectionStore = nodeStore.getConnectionStore()
+    
+    // For each child node, create a new connection to the parent
+    childNodes.forEach(childNode => {
+      // Remove connection between this node and child
+      connectionStore.removeConnection(node.id, childNode.id)
+      
+      // Create new connection between parent and child
+      connectionStore.addConnection(parentId, childNode.id)
+      
+      // Update the child's parentId
+      childNode.parentId = parentId
+    })
+    
+    // Remove all connections for this node
+    connectionStore.removeConnectionsForNode(node.id)
+    
+    // Remove the node
+    nodeStore.removeNode(node.id)
+  }
+
   return (
     <div
       key={node.id}
@@ -215,15 +247,23 @@ const Node = observer(({ node, isCentral }: NodeProps) => {
           {isHovered && (
             <div className="flex gap-2 mt-2">
               {!isCentral && (
-                <button
-                  className={`w-5 h-5 rounded-full 
-                    ${isLoading ? 'bg-gray-400' : 'bg-green-500'} text-white text-xs 
-                    flex items-center justify-center hover:bg-green-600 transition-colors`}
-                  onClick={handleElaborate}
-                  disabled={isLoading}
-                >
-                  {isLoading ? '...' : '×'}
-                </button>
+                <>
+                  <button
+                    className={`w-5 h-5 rounded-full 
+                      ${isLoading ? 'bg-gray-400' : 'bg-green-500'} text-white text-xs 
+                      flex items-center justify-center hover:bg-green-600 transition-colors`}
+                    onClick={handleElaborate}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? '...' : '×'}
+                  </button>
+                  <button
+                    className="w-5 h-5 bg-red-500 rounded-full text-white flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
+                    onClick={handleDeleteNode}
+                  >
+                    -
+                  </button>
+                </>
               )}
               <button
                 className="w-5 h-5 bg-blue-500 rounded-full text-white flex items-center justify-center text-sm hover:bg-blue-600 transition-colors"
