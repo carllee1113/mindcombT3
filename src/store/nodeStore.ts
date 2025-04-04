@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid'
 import { ConnectionStore } from './connectionStore'
 import { RootStore } from './store'
 import { importFreeMind } from '../utils/exportFreeMind'
+import { makeObservable, computed } from 'mobx'
 
 // All types and interfaces consolidated here
 export type ConnectionPointType = 'left' | 'right' | 'leftTop' | 'rightTop' | 'leftBottom' | 'rightBottom'
@@ -153,8 +154,14 @@ export class NodeStore {
 };
 
   // Public getters for commonly accessed properties
-  get allNodes(): INode[] {
+  @computed
+  get nodesAsArray() {
     return Array.from(this.nodes.values())
+  }
+
+  @computed
+  get allNodes() {
+    return this.nodesAsArray
   }
 
   // Note: Using importFreeMind from exportFreeMind.ts for FreeMind XML parsing

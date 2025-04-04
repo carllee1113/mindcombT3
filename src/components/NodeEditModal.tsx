@@ -9,6 +9,7 @@ const NodeEditModal = observer(() => {
 
   const handleSave = () => {
     if (uiStore.selectedNodeId) {
+      nodeStore.updateNodeContent(uiStore.selectedNodeId, nodeStore.getNodeById(uiStore.selectedNodeId)?.content || '')
       uiStore.closeNodeEditModal()
     }
   }

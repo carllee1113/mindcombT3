@@ -6,6 +6,5 @@
     <node ID="DI9DZD" TEXT="Opportunity (Solution, path, possibility)"/>
     <node ID="285DEG" TEXT="Resolution (Action, outcome, solution)"/>
     <node ID="284CCE" TEXT="Effect (Impact, result, change)"/>
-    <node ID="28DCCE" TEXT="Effect (This is a test)"/>
   </node>
 </map>

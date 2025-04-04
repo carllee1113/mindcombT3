@@ -38,32 +38,32 @@ export interface NodeLayoutConfig {
 
 // Default configuration values
 export const defaultNodeLayout: NodeLayoutConfig = {
-  baseRadius: 200,
+  baseRadius: 250,
   
   levelSpacing: {
-    first: 240,    // Slightly larger than base radius for first level
-    second: 180,   // Slightly smaller for second level
-    other: 160     // Even smaller for deeper levels
+    first: 300,    // Larger spacing for first level to match image
+    second: 250,   // Consistent spacing for second level
+    other: 220     // Slightly reduced for deeper levels
   },
   
   angleConstraints: {
-    smoothing: 0.3,           // 30% parent angle influence
-    maxDeviation: Math.PI / 3  // Maximum 60° deviation
+    smoothing: 0.2,           // 20% parent angle influence for more natural spread
+    maxDeviation: Math.PI / 2  // 90° maximum deviation for wider distribution
   },
   
   regions: {
     upper: {
-      start: -Math.PI / 12,  // -15°
-      end: Math.PI / 2.4     // 75°
+      start: -Math.PI / 6,   // -30°
+      end: Math.PI / 2       // 90°
     },
     lower: {
-      start: -Math.PI,       // -180°
-      end: -Math.PI / 3      // -60°
+      start: -Math.PI * 0.9, // -162°
+      end: -Math.PI / 4      // -45°
     }
   },
   
   variation: {
-    angle: Math.PI / 24,  // ±7.5° variation
-    radius: 0.1           // ±5% radius variation
+    angle: Math.PI / 36,  // ±5° variation for more consistent layout
+    radius: 0.05          // ±2.5% radius variation for better alignment
   }
 };

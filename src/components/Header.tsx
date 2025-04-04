@@ -14,8 +14,27 @@ const Header = () => {
     downloadFreeMind(xml)
   }
 
-  const handleViewModeSwitch = () => {
-    uiStore.toggleViewMode();
+  const handleViewModeSwitch = async () => {
+    try {
+      // Generate temporary .mm file from current nodes
+      const xml = generateFreeMindXML(nodeStore.allNodes, nodeStore.centralNodeId);
+      const blob = new Blob([xml], { type: 'application/xml' });
+      const tempFile = new File([blob], 'temp-view-switch.mm');
+      
+      // Import from temp file to ensure consistent structure
+      const { nodes, centralNodeId } = await importFreeMind(tempFile);
+      
+      // Update markdown content if switching to markdown view
+      if (uiStore.viewMode === 'mindmap') {
+        const markdown = generateMarkdownFromNodes(nodes, centralNodeId);
+        uiStore.setMarkdownContent(markdown);
+      }
+      
+      // Toggle view mode after conversion
+      uiStore.toggleViewMode();
+    } catch (error) {
+      console.error('Failed to switch view mode:', error);
+    }
   }
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,13 +246,7 @@ const Header = () => {
         >
           Export
         </button>
-        <button 
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
-          onClick={handleViewModeSwitch}
-          data-view-mindmap
-        >
-          {uiStore.viewMode === 'mindmap' ? 'View as Markdown' : 'View as Mind Map'}
-        </button>
+        
         <button 
           className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
           onClick={() => {

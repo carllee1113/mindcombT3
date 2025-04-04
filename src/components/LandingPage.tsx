@@ -4,7 +4,7 @@ const LandingPage = () => {
   const { uiStore } = useStore()
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-indigo-50 overflow-y-auto" style={{ height: '100vh' }}>
       {/* Hero Section */}
       <div className="container mx-auto px-6 py-16">
         <div className="flex flex-col md:flex-row items-center">
