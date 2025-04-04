@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite",
-    "preview": "vite preview"
+    "build": "node_modules/.bin/vite build",
+    "dev": "node_modules/.bin/vite",
+    "preview": "node_modules/.bin/vite preview"
   },
   "dependencies": {
     "vite": "^6.0.6",
