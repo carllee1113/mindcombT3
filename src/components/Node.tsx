@@ -35,7 +35,7 @@ const Node = observer(({ node, isCentral }: NodeProps) => {
   const [isLoading, setIsLoading] = useState(false)
 
   const nodeColor = isCentral ? '#FF0000' : (node.branchColor || '#666666')
-  const backgroundColor = nodeColor + '4D'
+  const backgroundColor = isCentral ? 'white' : nodeColor + '4D' // Changed central node background to white
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) {

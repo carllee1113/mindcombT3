@@ -1,28 +1,31 @@
 # Dependencies
-node_modules
+node_modules/
 .pnp
 .pnp.js
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
 
-# Production
-dist
-dist-ssr
-build
+# Build and output directories
+dist/
+build/
+out/
+.next/
+.cache/
 
 # Testing
-coverage
+coverage/
+.nyc_output/
 
-# Environment files
-# Add these lines to your existing .gitignore
+# Environment variables
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*.local
 
-# Editor directories and files
-.vscode/*
+# Editor files
+.vscode/
 !.vscode/extensions.json
-.idea
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
@@ -30,7 +33,7 @@ coverage
 *.sw?
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -38,7 +41,22 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Misc
+# System files
 .DS_Store
+Thumbs.db
+
+# Security
 *.pem
-.vercel
+*.key
+
+# Deployment
+.vercel/
+.netlify/
+.serverless/
+
+# TypeScript
+*.tsbuildinfo
+
+# Temp files
+.temp/
+tmp/

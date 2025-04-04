@@ -16,7 +16,10 @@ const LandingPage = () => {
               Mindcomb helps you organize thoughts, brainstorm ideas, and create beautiful mind maps with ease.
             </p>
             <button 
-              onClick={() => uiStore.setShowLandingPage(false)}
+              onClick={() => {
+  uiStore.setShowLandingPage(false);
+  uiStore.viewMode = 'mindmap';
+}}
               className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 transition"
             >
               Start Mapping

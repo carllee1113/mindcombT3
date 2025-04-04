@@ -94,7 +94,7 @@ export const MindMap = observer(() => {
 
       return (
         <ConnectionLine
-          key={`${conn.sourceId}-${conn.targetId}`}
+          key={`${conn.id || `${conn.sourceId}-${conn.targetId}`}`}
           sourceNode={sourceNode}
           targetNode={targetNode}
           sourcePoint={sourcePoint}

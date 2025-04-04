@@ -1,6 +1,6 @@
 import { observer } from 'mobx-react-lite'
-import type { INode } from '../store/store'
-import type { ConnectionPoint } from '../types/node'
+import { ConnectionPoint, INode } from '../types/node';
+import { calculateConnectionPoints } from '../utils/connectionUtils';
 
 interface ConnectionLineProps {
   sourceNode: INode
@@ -11,38 +11,44 @@ interface ConnectionLineProps {
 }
 
 const ConnectionLine = observer(({ sourceNode, targetNode, color, sourcePoint, targetPoint }: ConnectionLineProps) => {
-  if (!sourceNode?.position || !targetNode?.position || !sourcePoint || !targetPoint) {
+  if (!sourceNode?.position || !targetNode?.position) {
     return null;
+  }
+
+  // Ensure nodes have connection points, calculate if missing
+  if (!sourceNode.connectionPoints || sourceNode.connectionPoints.length === 0) {
+    sourceNode.connectionPoints = calculateConnectionPoints(sourceNode)
+  }
+  if (!targetNode.connectionPoints || targetNode.connectionPoints.length === 0) {
+    targetNode.connectionPoints = calculateConnectionPoints(targetNode)
   }
 
   // Recalculate connection points based on current positions
   const dx = targetNode.position.x - sourceNode.position.x
 
   // Dynamically determine connection points
-  let currentSourcePoint = sourcePoint
-  let currentTargetPoint = targetPoint
+  let currentSourcePoint = sourcePoint || sourceNode.connectionPoints[0]
+  let currentTargetPoint = targetPoint || targetNode.connectionPoints[0]
 
-  if (sourceNode.connectionPoints && targetNode.connectionPoints) {
-    // Check if target node is a child of central node
-    if (targetNode.parentId === sourceNode.id) {
-      // For direct children of central node, use standard left/right connection
-      if (dx > 0) {
-        currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'right') || sourcePoint
-        currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'left') || targetPoint
-      } else {
-        currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'left') || sourcePoint
-        currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'right') || targetPoint
-      }
+  // Check if target node is a child of central node
+  if (targetNode.parentId === sourceNode.id) {
+    // For direct children of central node, use standard left/right connection
+    if (dx > 0) {
+      currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'right') || currentSourcePoint
+      currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'left') || currentTargetPoint
     } else {
-      // For subsequent levels, maintain the same side as parent
-      const isRightBranch = dx > 0
-      currentSourcePoint = sourceNode.connectionPoints.find(p => 
-        isRightBranch ? p.type === 'right' : p.type === 'left'
-      ) || sourcePoint
-      currentTargetPoint = targetNode.connectionPoints.find(p => 
-        isRightBranch ? p.type === 'left' : p.type === 'right'
-      ) || targetPoint
+      currentSourcePoint = sourceNode.connectionPoints.find(p => p.type === 'left') || currentSourcePoint
+      currentTargetPoint = targetNode.connectionPoints.find(p => p.type === 'right') || currentTargetPoint
     }
+  } else {
+    // For subsequent levels, maintain the same side as parent
+    const isRightBranch = dx > 0
+    currentSourcePoint = sourceNode.connectionPoints.find(p => 
+      isRightBranch ? p.type === 'right' : p.type === 'left'
+    ) || currentSourcePoint
+    currentTargetPoint = targetNode.connectionPoints.find(p => 
+      isRightBranch ? p.type === 'left' : p.type === 'right'
+    ) || currentTargetPoint
   }
 
   const startX = sourceNode.position.x + currentSourcePoint.x

@@ -111,15 +111,6 @@ const Header = () => {
       })
 
       // Position first layer nodes
-      const angleConstraints = {
-        maxDeviation: Math.PI / 8,
-        preferredAngles: {
-          left: [-Math.PI * 0.8, -Math.PI / 3],
-          right: [-Math.PI / 6, Math.PI / 2.5]
-        },
-        smoothing: 0.4
-      }
-
       const regions = {
         upper: { start: -Math.PI / 4, end: Math.PI / 2 },
         lower: { start: -Math.PI * 0.9, end: -Math.PI / 3 }
@@ -130,17 +121,6 @@ const Header = () => {
         first: baseRadius,
         second: baseRadius * 0.7,
         other: baseRadius * 0.5
-      }
-
-      const constrainAngle = (angle: number, parentAngle: number, isRight: boolean) => {
-        const preferred = isRight ? angleConstraints.preferredAngles.right : angleConstraints.preferredAngles.left
-        const baseAngle = Math.max(preferred[0], Math.min(preferred[1], angle))
-        const deviation = baseAngle - parentAngle
-        const constrainedDeviation = Math.max(
-          -angleConstraints.maxDeviation,
-          Math.min(angleConstraints.maxDeviation, deviation)
-        )
-        return parentAngle + constrainedDeviation
       }
 
       firstLayerNodes.forEach((node, index) => {
@@ -163,28 +143,28 @@ const Header = () => {
 
         nodeStore.updateNodePosition(node.id, { x: newX, y: newY })
 
-        // Position child nodes recursively
+        // Position child nodes recursively using centralized configuration
         const positionChildNodes = (parentNode: INode, parentAngle: number, level: number, parentPos: {x: number, y: number}) => {
           const childNodes = nodes.filter(n => n.parentId === parentNode.id)
           const angleSpread = Math.PI / (level === 2 ? 8 : 6)
+          const { angleConstraints, levelSpacing, variation } = nodeStore.nodeLayout
           
           childNodes.forEach((childNode, idx) => {
             const baseAngle = parentAngle + (angleSpread * (idx - (childNodes.length - 1) / 2) / Math.max(childNodes.length, 1))
-            const isRightSide = baseAngle > -Math.PI / 2
             
-            // Apply angle constraints and smoothing
+            // Apply angle constraints and smoothing from config
             const smoothedAngle = parentAngle * angleConstraints.smoothing + 
                                 baseAngle * (1 - angleConstraints.smoothing)
-            const childAngle = constrainAngle(smoothedAngle, parentAngle, isRightSide)
+            const maxDev = angleConstraints.maxDeviation
+            const childAngle = Math.max(Math.min(smoothedAngle, parentAngle + maxDev), parentAngle - maxDev)
             
-            // Remove these local spacing configurations
-            const baseRadius = nodeStore.spacing.baseRadius
-            const levelSpacing = nodeStore.spacing.levelSpacing
+            // Use level-specific spacing from config
+            const baseRadius = level === 1 ? levelSpacing.first :
+                             level === 2 ? levelSpacing.second :
+                             levelSpacing.other
             
-            // Later in the positionChildNodes function
-            const childRadius = level === 2 ? 
-            levelSpacing.second : 
-            levelSpacing.other
+            // Apply radius variation
+            const childRadius = baseRadius * (1 + (Math.random() - 0.5) * variation.radius)
             
             const childX = parentPos.x + (childRadius * Math.cos(childAngle))
             const childY = parentPos.y + (childRadius * Math.sin(childAngle))

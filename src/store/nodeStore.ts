@@ -1,6 +1,8 @@
 import { makeAutoObservable } from 'mobx'
 import { v4 as uuid } from 'uuid'
-import { getBranchColor } from '../utils/colors'
+import { ConnectionStore } from './connectionStore'
+import { RootStore } from './store'
+import { importFreeMind } from '../utils/exportFreeMind'
 
 // All types and interfaces consolidated here
 export type ConnectionPointType = 'left' | 'right' | 'leftTop' | 'rightTop' | 'leftBottom' | 'rightBottom'
@@ -29,19 +31,32 @@ export interface INode {
   branchColor: string
   x: number
   y: number
+  width?: number  // Add width property
+  height?: number // Add height property
 }
 
 // Node factory for creating different types of nodes
 // Export NodeFactory
 // Make the function exportable
 export const calculateConnectionPoints = (nodeWidth: number = 180, nodeHeight: number = 60): ConnectionPoint[] => {
+  if (nodeWidth <= 0 || nodeHeight <= 0) {
+    nodeWidth = 180;
+    nodeHeight = 60;
+  }
   return [
-    { x: 0, y: nodeHeight / 2, type: 'left' },
-    { x: nodeWidth, y: nodeHeight / 2, type: 'right' },
-    { x: 0, y: 0, type: 'leftTop' },
-    { x: nodeWidth, y: 0, type: 'rightTop' },
-    { x: 0, y: nodeHeight, type: 'leftBottom' },
-    { x: nodeWidth, y: nodeHeight, type: 'rightBottom' }
+    // Left side points
+    { x: 0, y: nodeHeight * 0.5, type: 'left' },
+    
+    // Right side points
+    { x: nodeWidth, y: nodeHeight * 0.5, type: 'right' },
+    
+    // Top points
+    { x: nodeWidth * 0.3, y: 0, type: 'leftTop' },
+    { x: nodeWidth * 0.7, y: 0, type: 'rightTop' },
+    
+    // Bottom points
+    { x: nodeWidth * 0.3, y: nodeHeight, type: 'leftBottom' },
+    { x: nodeWidth * 0.7, y: nodeHeight, type: 'rightBottom' }
   ]
 }
 
@@ -56,11 +71,13 @@ export class NodeFactory {
       title: 'SCORE Story Element',
       content: 'SCORE Storytelling Framework',
       level: 0,
-      connectionPoints: calculateConnectionPoints(), // Use the global function
+      connectionPoints: calculateConnectionPoints(180, 60), // Default dimensions
       branchColor: '#4A5568',
       x: position.x,
-      y: position.y
-    }
+      y: position.y,
+      width: 180,  // Set default width
+      height: 60   // Set default height
+    };
   }
 
   static createChildNode(params: {
@@ -68,7 +85,9 @@ export class NodeFactory {
     title: string,
     parentId: NodeId,
     level: NodeLevel,
-    branchColor: string
+    branchColor: string,
+    width?: number,  // Optional width
+    height?: number  // Optional height
   }): INode {
     return {
       id: uuid(),
@@ -77,261 +96,209 @@ export class NodeFactory {
       content: params.title,
       level: params.level,
       parentId: params.parentId,
-      connectionPoints: calculateConnectionPoints(), // Use the global function
+      connectionPoints: calculateConnectionPoints(params.width, params.height),
       branchColor: params.branchColor,
       x: params.position.x,
-      y: params.position.y
-    }
+      y: params.position.y,
+      width: params.width,
+      height: params.height
+    };
   }
 }
 
+import { defaultNodeLayout, NodeLayoutConfig } from '../config/nodeLayoutConfig';
+import { getBranchColor } from '../utils/colors';
+
 export class NodeStore {
+  constructor(rootStore: any) {
+    makeAutoObservable(this);
+    this.rootStore = rootStore;
+    this.initializeDefaultNodes();
+  }
+
+  async loadScoreTemplate() {
+    try {
+      const response = await fetch('/templates/score-template.mm')
+      const xmlText = await response.text()
+      const blob = new Blob([xmlText], { type: 'application/xml' })
+      const file = new File([blob], 'score-template.mm')
+      const { nodes, centralNodeId } = await importFreeMind(file)
+      
+      nodes.forEach((node: INode, index) => {
+        this.addNode({
+          ...node,
+          branchColor: node.branchColor || getBranchColor(index),
+          connectionPoints: calculateConnectionPoints(node.width, node.height),
+          width: node.width || 180,  // Add default if missing
+          height: node.height || 60   // Add default if missing
+        })
+      })
+      this._centralNodeId = centralNodeId
+    } catch (error) {
+      console.error('Failed to load score template:', error)
+    }
+  }
   private nodes: Map<NodeId, INode> = new Map()
   private _centralNodeId: NodeId = ''
-  private rootStore: any // We'll type this properly later
+  private rootStore: RootStore
 
-  // Spacing configuration
-  // Change from private to public
-  public readonly spacing = {
-    baseRadius: 300,
-    levelSpacing: {
-      first: 300,
-      second: 150,   // 50% of first
-      other: 90      // 30% of first
-    },
+  // Node layout configuration
+  nodeLayout: NodeLayoutConfig = {
+  ...defaultNodeLayout,
+  baseRadius: 200,
+  variation: {
+    angle: 0.2,
+    radius: 0.3
+  }
+};
+
+  // Public getters for commonly accessed properties
+  get allNodes(): INode[] {
+    return Array.from(this.nodes.values())
+  }
+
+  // Note: Using importFreeMind from exportFreeMind.ts for FreeMind XML parsing
+
+  private async initializeDefaultNodes(): Promise<void> {
+    await this.loadScoreTemplate();
     
-    // Angle constraints for node distribution
-    angleConstraints: {
-      maxDeviation: Math.PI / 8,  // Maximum angle between nodes
-      preferredAngles: {
-        left: [-Math.PI * 0.8, -Math.PI / 3],    // Left side spread
-        right: [-Math.PI / 6, Math.PI / 2.5]     // Right side spread
-      },
-      smoothing: 0.2  // Controls how smooth the node distribution is (0-1)
-    },
+    // Position central node at exact center of canvas (0,0)
+    const centralNode = this.getNodeById(this.centralNodeId);
+    if (centralNode) {
+      this.updateNodePosition(centralNode.id, { x: 0, y: 0 });
+    }
     
-    // Individual node dimensions
-    nodeSize: {
-      width: 180,
-      height: 60
+    // Align first layer nodes around the center with consistent spacing
+    this.alignFirstLayerNodes();
+    
+    // Create connections for all child nodes using the same approach as import
+    const childNodes = this.getChildNodes(this.centralNodeId);
+    const connectionStore = this.getConnectionStore();
+    
+    // Clear existing connections first to avoid duplicates
+    connectionStore.clearConnections();
+    
+    // Initialize connections with IDs (same as import behavior)
+    connectionStore.initializeDefaultConnections(
+      this.centralNodeId,
+      childNodes.map(node => node.id)
+    );
+    
+    // Ensure the UI viewport is centered
+    if (this.rootStore.uiStore) {
+      // Center the viewport on (0,0)
+      this.rootStore.uiStore.setViewportPosition(window.innerWidth / 2, window.innerHeight / 2);
+      this.rootStore.uiStore.resetZoom();
     }
   }
 
-  constructor(rootStore: any) {
-    this.rootStore = rootStore
-    makeAutoObservable(this)
-    this.initializeDefaultNodes()
+  updateNodePosition(id: NodeId, position: NodePosition): void {
+    const node = this.nodes.get(id);
+    if (node) {
+      node.position = position;
+      node.x = position.x;
+      node.y = position.y;
+      this.nodes.set(id, node);
+    }
+  }
+
+  getConnectionStore(): ConnectionStore {
+    return this.rootStore.connectionStore;
   }
 
   get centralNodeId(): NodeId {
     return this._centralNodeId
   }
 
-  get allNodes(): INode[] {
-    return Array.from(this.nodes.values())
+  get get(): (id: string) => INode | undefined {
+    return this.getNodeById.bind(this)
   }
 
-  private initializeDefaultNodes(): void {
-    const centerX = window.innerWidth / 2
-    const centerY = window.innerHeight / 2
-  
-    const centralNode = NodeFactory.createCentralNode({ x: centerX, y: centerY })
-    this._centralNodeId = centralNode.id
-    this.addNode(centralNode)
-  
-    const childNodeIds: NodeId[] = []
-    const defaultSubtopics = [
-      'Situation (Context, background, setup)',
-      'Complication (Problem, conflict, challenge)',
-      'Opportunity (Solution, path, possibility)',
-      'Resolution (Action, outcome, solution)',
-      'Effect (Impact, result, change)'
-    ]
-  
-    // Create child nodes with specific colors using getBranchColor
-    defaultSubtopics.forEach((topic, index) => {
-      const childNode = NodeFactory.createChildNode({
-        position: { x: centerX, y: centerY },
-        title: topic,
-        parentId: centralNode.id,
-        level: 1,
-        branchColor: getBranchColor(index)
-      })
-      this.addNode(childNode)
-      childNodeIds.push(childNode.id)
-    })
-  
-    this.alignFirstLayerNodes()
-    this.rootStore.connectionStore.initializeDefaultConnections(centralNode.id, childNodeIds)
+
+
+
+
+  getNodeById(id: NodeId): INode | undefined {
+    return this.nodes.get(id);
   }
 
-  private getEmptyPosition(parentNode: INode): NodePosition {
-    const childNodes = this.getChildNodes(parentNode.id)
-    
-    // Use correct spacing based on parent's level
-    const baseOffset = parentNode.level === 0 
-      ? this.spacing.levelSpacing.first
-      : parentNode.level === 1 
-        ? this.spacing.levelSpacing.second 
-        : this.spacing.levelSpacing.other
-    
-    if (childNodes.length === 0) {
-      return {
-        x: parentNode.position.x + baseOffset,
-        y: parentNode.position.y
-      }
-    }
-  
-    // Find the least crowded angle for the new node
-    const angles = 8 // Divide the space into 8 sectors
-    const sectorSize = (2 * Math.PI) / angles
-    let bestAngle = 0
-    let minNodesInSector = Infinity
-  
-    // Check each sector for number of nodes
-    for (let i = 0; i < angles; i++) {
-      const sectorStart = i * sectorSize
-      const nodesInSector = childNodes.filter(node => {
-        const angle = Math.atan2(
-          node.position.y - parentNode.position.y,
-          node.position.x - parentNode.position.x
-        )
-        return angle >= sectorStart && angle < sectorStart + sectorSize
-      }).length
-  
-      if (nodesInSector < minNodesInSector) {
-        minNodesInSector = nodesInSector
-        bestAngle = sectorStart + (sectorSize / 2)
-      }
-    }
-  
-    // Calculate position using the best angle and add some randomness
-    // In getEmptyPosition method
-    const randomFactor = parentNode.level === 0 ? 25 : 15;
-    const randomOffset = (Math.random() - 0.5) * randomFactor;
-    return {
-      x: parentNode.position.x + (baseOffset * Math.cos(bestAngle)) + randomOffset,
-      y: parentNode.position.y + (baseOffset * Math.sin(bestAngle)) + randomOffset
-    }
+  getChildNodes(parentId: NodeId): INode[] {
+    return this.allNodes.filter((node: INode) => node.parentId === parentId);
   }
 
-  addNode(node: INode): void {
-    this.validateNode(node)
-    if (node.parentId && !node.position) {
-      const parentNode = this.getNodeById(node.parentId)
-      if (parentNode) {
-        node.position = this.getEmptyPosition(parentNode)
-      }
-    }
-    this.nodes.set(node.id, node)
+  getAllNodesAsMap(): Map<NodeId, INode> {
+    return new Map(this.nodes);
   }
 
   removeNode(id: NodeId): void {
-    if (id === this._centralNodeId) return
-    this.nodes.delete(id)
-    // Remove child nodes recursively
-    this.removeChildNodes(id)
-  }
-
-  private removeChildNodes(parentId: NodeId): void {
-    const childNodes = this.getChildNodes(parentId)
-    childNodes.forEach(child => {
-      this.nodes.delete(child.id)
-      this.removeChildNodes(child.id)
-    })
-  }
-
-  updateNodePosition(id: NodeId, position: NodePosition): void {
-    const node = this.nodes.get(id)
-    if (node) {
-      node.position = position
-    }
+    this.nodes.delete(id);
   }
 
   updateNodeContent(id: NodeId, content: string): void {
-    const node = this.nodes.get(id)
+    const node = this.nodes.get(id);
     if (node) {
-      node.content = this.sanitizeContent(content)
+      node.content = content;
+      this.nodes.set(id, node);
     }
   }
 
   updateNodeTitle(id: NodeId, title: string): void {
-    const node = this.nodes.get(id)
+    const node = this.nodes.get(id);
     if (node) {
-      node.title = this.sanitizeTitle(title)
+      node.title = title;
+      this.nodes.set(id, node);
     }
   }
 
-  getNodeById(id: NodeId): INode | undefined {
-    return this.nodes.get(id)
-  }
-
-  getChildNodes(parentId: NodeId): INode[] {
-    return this.allNodes.filter(node => node.parentId === parentId)
-  }
-
-  private validateNode(node: INode): void {
-    if (!node.id || !node.title || node.level === undefined) {
-      throw new Error('Invalid node structure')
-    }
-  }
-
-  private sanitizeContent(content: string): string {
-    return content.trim()
-  }
-
-  private sanitizeTitle(title: string): string {
-    return title.trim()
-  }
-
-  getConnectionStore() {
-    return this.rootStore.connectionStore
+  addNode(node: INode): void {
+    this.nodes.set(node.id, node);
   }
 
   alignFirstLayerNodes(): void {
-    const centralNode = this.getNodeById(this.centralNodeId)
-    if (!centralNode) return
+    const centralNode = this.getNodeById(this.centralNodeId);
+    if (!centralNode) return;
   
-    const firstLayerNodes = this.getChildNodes(this.centralNodeId)
-    if (firstLayerNodes.length === 0) return
+    const firstLayerNodes = this.getChildNodes(this.centralNodeId);
+    if (firstLayerNodes.length === 0) return;
   
-    const upperRegion = { start: -Math.PI / 12, end: Math.PI / 2.5 }
-    const lowerRegion = { start: -Math.PI, end: -Math.PI / 3 }
+    const { regions, baseRadius, levelSpacing } = this.nodeLayout;
+    const radius = levelSpacing.first || baseRadius; // Use consistent spacing from config
     
-    // Use spacing configuration
-    const radius = this.spacing.baseRadius
-    
-    const totalNodes = firstLayerNodes.length
-    const leftSideCount = Math.ceil(totalNodes / 2)
-    const rightSideCount = Math.floor(totalNodes / 2)
+    const totalNodes = firstLayerNodes.length;
+    const leftSideCount = Math.ceil(totalNodes / 2);
+    const rightSideCount = Math.floor(totalNodes / 2);
 
-    firstLayerNodes.forEach((node, index) => {
-      let angle
+    // Sort nodes to ensure consistent ordering (same as import behavior)
+    const sortedNodes = [...firstLayerNodes].sort((a, b) => {
+      // Sort by title for consistent ordering
+      return a.title.localeCompare(b.title);
+    });
+
+    sortedNodes.forEach((node, index) => {
+      let angle;
       if (index < leftSideCount) {
-        // Left side nodes - ensure even spacing
-        const progress = leftSideCount > 1 ? index / (leftSideCount - 1) : 0.5
-        angle = lowerRegion.start + (lowerRegion.end - lowerRegion.start) * progress
+        // Left side nodes distribution - evenly spaced
+        const progress = leftSideCount > 1 ? index / (leftSideCount - 1) : 0.5;
+        angle = regions.lower.start + (regions.lower.end - regions.lower.start) * progress;
       } else {
-        // Right side nodes - ensure even spacing
-        const rightIndex = index - leftSideCount
-        const progress = rightSideCount > 1 ? rightIndex / (rightSideCount - 1) : 0.5
-        angle = upperRegion.start + (upperRegion.end - upperRegion.start) * progress
+        // Right side nodes distribution - evenly spaced
+        const rightIndex = index - leftSideCount;
+        const progress = rightSideCount > 1 ? rightIndex / (rightSideCount - 1) : 0.5;
+        angle = regions.upper.start + (regions.upper.end - regions.upper.start) * progress;
       }
 
-      // Add slight radius variation to prevent overlap
-      // Modified spacing calculation
-      const radiusVariation = radius // Remove the index multiplication
-      const newX = centralNode.position.x + (radiusVariation * Math.cos(angle))
-      const newY = centralNode.position.y + (radiusVariation * Math.sin(angle))
+      // Calculate position with consistent radius (no random variation)
+      const newX = centralNode.position.x + (radius * Math.cos(angle));
+      const newY = centralNode.position.y + (radius * Math.sin(angle));
   
       this.updateNodePosition(node.id, {
         x: newX,
         y: newY
-      })
-    })
-}
+      });
+    });
+  }
 
-  updateFromMarkdown(lines: string[]) {
+  updateFromMarkdown(lines: string[]): void {
     lines.forEach(line => {
       const match = line.match(/^(#+)\s+(.+)/)
       if (match) {
@@ -369,7 +336,7 @@ export class NodeStore {
     })
   }
 
-  clearNonCentralNodes() {
+  clearNonCentralNodes(): void {
     // Get all nodes except central node
     const nonCentralNodes = Array.from(this.nodes.values())
       .filter(node => node.id !== this.centralNodeId)
@@ -382,60 +349,23 @@ export class NodeStore {
     })
   }
 
-  getAllNodesAsMap(): Map<string, INode> {
-      return new Map(this.nodes);
-    }
-  
-    restoreNodesFromSavedState(savedNodes: Map<string, INode>) {
-      this.nodes = new Map(savedNodes);
-    }
-  
-    updateNodesFromMarkdown(lines: string[], savedNodes: Map<string, INode>) {
-        lines.forEach(line => {
-          const match = line.match(/^(#+)\s+(.+)/);
-          if (match) {
-            const level = match[1].length as NodeLevel;
-            const content = match[2].trim();
-            
-            if (level === 1) {
-              this.updateNodeContent(this.centralNodeId, content);
-            } else {
-              const parentLevel = level - 1;
-              const potentialParents = Array.from(this.nodes.values())
-                .filter(node => node.level === parentLevel - 1);
-              
-              if (potentialParents.length > 0) {
-                const parentNode = potentialParents[potentialParents.length - 1];
-                // Find existing node with same content
-                const existingNode = Array.from(savedNodes.values())
-                  .find(node => node.content === content);
-  
-                if (existingNode) {
-                  // Preserve position and color from existing node
-                  this.nodes.set(existingNode.id, existingNode);
-                } else {
-                  // Create new node with random position
-                  const newNode = NodeFactory.createChildNode({
-                    position: this.getEmptyPosition(parentNode),
-                    title: content,
-                    parentId: parentNode.id,
-                    level: level,
-                    branchColor: parentNode.branchColor || '#4A5568'
-                  });
-                  this.addNode(newNode);
-                  this.getConnectionStore().addConnection(parentNode.id, newNode.id);
-                }
-              }
-            }
-          }
-        });
-      }
-
-  clearNodes() {
+  clearNodes(): void {
     this.nodes.clear();
   }
 
-  getAllNodes(): INode[] {
-    return Array.from(this.nodes.values());
+  updateNodeDimensions(id: NodeId, width: number, height: number): void {
+    const node = this.nodes.get(id);
+    if (node) {
+      node.width = width;
+      node.height = height;
+      node.connectionPoints = this.calculateConnectionPoints(width, height);
+      this.nodes.set(id, node);
+    }
   }
-}
+
+  private calculateConnectionPoints(width: number, height: number): ConnectionPoint[] {
+    // Use the same connection points calculation as the standalone function
+    // to ensure consistency between default and imported mindmaps
+    return calculateConnectionPoints(width, height);
+  }
+} // <-- Class closing brace
