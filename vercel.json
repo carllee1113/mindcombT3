@@ -5,15 +5,13 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist",
-        "installCommand": "npm install --unsafe-perm",
-        "buildCommand": "npm run build"
+        "distDir": "dist"
       }
     }
   ],
   "routes": [
     {
-      "src": "/(.*)", 
+      "src": "/(.*)",
       "dest": "/dist/$1"
     }
   ]
