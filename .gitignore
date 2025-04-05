@@ -78,3 +78,4 @@ Thumbs.db
 # Temp files
 .temp/
 tmp/
+.vercel
