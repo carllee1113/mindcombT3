@@ -3,13 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  build: {
-    rollupOptions: {
-      external: [
-        'react-dom',
-        'react-dom/client',
-        '@/utils/exportFreeMind'
-      ]
+  resolve: {
+    alias: {
+      'react-dom/client': 'react-dom/client.js'
     }
   }
 })
