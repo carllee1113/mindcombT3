@@ -6,7 +6,10 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      external: ['react-dom/client']
+      external: [
+        'react-dom/client',
+        'react-dom'  // Add this to fix the mobx-react-lite dependency
+      ]
     }
   },
   resolve: {
