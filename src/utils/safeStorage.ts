@@ -1,17 +1,13 @@
-/**
- * Safe storage utilities with memory fallback
- */
-
-// Memory fallback when storage is unavailable
+// 内存存储作为备用
 const memoryStore: Record<string, string> = {};
 
-// Safe localStorage wrapper
+// 安全的localStorage包装器
 export const localStore = {
   getItem: (key: string): string | null => {
     try {
       return localStorage.getItem(key);
     } catch (error) {
-      console.warn('localStorage.getItem failed:', error);
+      console.warn('localStorage访问失败:', error);
       return memoryStore[key] || null;
     }
   },
@@ -21,9 +17,9 @@ export const localStore = {
       localStorage.setItem(key, value);
       return true;
     } catch (error) {
-      console.warn('localStorage.setItem failed:', error);
+      console.warn('localStorage访问失败:', error);
       memoryStore[key] = value;
-      return true; // Still succeeded with memory fallback
+      return true; // 使用内存备份仍然成功
     }
   },
   
@@ -32,20 +28,20 @@ export const localStore = {
       localStorage.removeItem(key);
       return true;
     } catch (error) {
-      console.warn('localStorage.removeItem failed:', error);
+      console.warn('localStorage访问失败:', error);
       delete memoryStore[key];
-      return true; // Still succeeded with memory fallback
+      return true;
     }
   }
 };
 
-// Session storage implementation
+// sessionStorage实现
 export const sessionStore = {
   getItem: (key: string): string | null => {
     try {
       return sessionStorage.getItem(key);
     } catch (error) {
-      console.warn('sessionStorage.getItem failed:', error);
+      console.warn('sessionStorage访问失败:', error);
       return memoryStore[key] || null;
     }
   },
@@ -55,7 +51,7 @@ export const sessionStore = {
       sessionStorage.setItem(key, value);
       return true;
     } catch (error) {
-      console.warn('sessionStorage.setItem failed:', error);
+      console.warn('sessionStorage访问失败:', error);
       memoryStore[key] = value;
       return true;
     }
@@ -66,7 +62,7 @@ export const sessionStore = {
       sessionStorage.removeItem(key);
       return true;
     } catch (error) {
-      console.warn('sessionStorage.removeItem failed:', error);
+      console.warn('sessionStorage访问失败:', error);
       delete memoryStore[key];
       return true;
     }
