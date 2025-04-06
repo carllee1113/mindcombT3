@@ -8,7 +8,9 @@ export default defineConfig({
     rollupOptions: {
       external: [
         'react-dom/client',
-        'react-dom'  // Add this to fix the mobx-react-lite dependency
+        'react-dom',
+        'react',
+        'mobx-react-lite'
       ]
     }
   },
