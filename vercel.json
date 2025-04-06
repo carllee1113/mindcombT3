@@ -7,7 +7,7 @@
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist",
-        "installCommand": "npm install --legacy-peer-deps && npm install jiti postcss-load-config",
+        "installCommand": "npm install --legacy-peer-deps && npm install jiti@1.21.0 postcss-load-config@4.0.2",
         "buildCommand": "npm run build"
       }
     }
