@@ -4,19 +4,14 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 3001,
-    strictPort: true,
-    hmr: {
-      clientPort: 3001
-    }
-  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
     }
   },
-  optimizeDeps: {
-    force: true
+  build: {
+    rollupOptions: {
+      external: ['react-dom/client', '@/utils/exportFreeMind']
+    }
   }
 })
