@@ -1,6 +1,5 @@
 /**
  * Safe storage utilities with memory fallback
- * Handles environments where storage access is restricted
  */
 
 // Memory fallback when storage is unavailable
@@ -24,7 +23,7 @@ export const localStore = {
     } catch (error) {
       console.warn('localStorage.setItem failed:', error);
       memoryStore[key] = value;
-      return false;
+      return true; // Still succeeded with memory fallback
     }
   },
   
@@ -35,20 +34,19 @@ export const localStore = {
     } catch (error) {
       console.warn('localStorage.removeItem failed:', error);
       delete memoryStore[key];
-      return false;
+      return true; // Still succeeded with memory fallback
     }
   }
 };
 
-// Session storage implementation follows the same pattern
+// Session storage implementation
 export const sessionStore = {
-  // Similar implementation as localStore but with sessionStorage
   getItem: (key: string): string | null => {
     try {
       return sessionStorage.getItem(key);
     } catch (error) {
       console.warn('sessionStorage.getItem failed:', error);
-      return null;
+      return memoryStore[key] || null;
     }
   },
   
@@ -58,7 +56,8 @@ export const sessionStore = {
       return true;
     } catch (error) {
       console.warn('sessionStorage.setItem failed:', error);
-      return false;
+      memoryStore[key] = value;
+      return true;
     }
   },
   
@@ -68,7 +67,8 @@ export const sessionStore = {
       return true;
     } catch (error) {
       console.warn('sessionStorage.removeItem failed:', error);
-      return false;
+      delete memoryStore[key];
+      return true;
     }
   }
 };
