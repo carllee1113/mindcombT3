@@ -10,8 +10,12 @@ const initializePersistentStore = () => {
   persistentStore['viewMode'] = 'mindmap';
   persistentStore['uiState'] = JSON.stringify({
     icons: true,
-    visibility: true
+    visibility: true,
+    iconVisibility: true,
+    initialized: true
   });
+  // Ensure the UI state is properly initialized in memory store
+  memoryStore['uiState'] = persistentStore['uiState'];
 };
 
 // Initialize storage with default values
