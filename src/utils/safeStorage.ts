@@ -1,6 +1,22 @@
 // Memory fallback when storage is unavailable
 const memoryStore: Record<string, string> = {};
 
+// Persistent memory store for critical UI state
+const persistentStore: Record<string, string> = {};
+
+// Initialize persistent store with default values
+const initializePersistentStore = () => {
+  persistentStore['showLandingPage'] = 'false';
+  persistentStore['viewMode'] = 'mindmap';
+  persistentStore['uiState'] = JSON.stringify({
+    icons: true,
+    visibility: true
+  });
+};
+
+// Initialize storage with default values
+initializePersistentStore();
+
 // Error reporting function
 const reportStorageError = (error: unknown, operation: string, storageType: string) => {
   console.warn(`${storageType} ${operation} failed:`, error);
@@ -65,16 +81,19 @@ export const localStore = {
       try {
         const value = localStorage.getItem(key);
         // Also store in memory as backup
-        if (value !== null) memoryStore[key] = value;
+        if (value !== null) {
+          memoryStore[key] = value;
+          persistentStore[key] = value; // Update persistent store
+        }
         return value;
       } catch (error) {
         reportStorageError(error, 'getItem', 'localStorage');
-        // Try to recover from memory store
-        return memoryStore[key] || null;
+        // Try to recover from persistent store first, then memory store
+        return persistentStore[key] || memoryStore[key] || null;
       }
     }
-    // Fallback to memory store
-    return memoryStore[key] || null;
+    // Fallback to persistent store first, then memory store
+    return persistentStore[key] || memoryStore[key] || null;
   },
   
   setItem: (key: string, value: string): boolean => {
@@ -84,15 +103,17 @@ export const localStore = {
     if (hasLocalStorage) {
       try {
         localStorage.setItem(key, value);
+        persistentStore[key] = value; // Update persistent store
         return true;
       } catch (error) {
         console.warn('localStorage.setItem failed:', error);
         // Continue to fallback
       }
     }
-    // Fallback to memory store
+    // Update both persistent and memory stores
+    persistentStore[key] = value;
     memoryStore[key] = value;
-    return true; // Still succeeded with memory fallback
+    return true; // Still succeeded with fallback
   },
   
   removeItem: (key: string): boolean => {
@@ -107,7 +128,8 @@ export const localStore = {
         // Continue to fallback
       }
     }
-    // Always clean up memory store
+    // Clean up both persistent and memory stores
+    delete persistentStore[key];
     delete memoryStore[key];
     return true;
   }
