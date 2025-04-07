@@ -7,21 +7,20 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      external: [
-        'react-dom/client',
-        'react-dom',
-        'react',
-        'mobx-react-lite'
-      ]
-    }
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'mobx-react-lite']
+        }
+      }
+    },
+    sourcemap: true,
+    chunkSizeWarningLimit: 1000
   },
   resolve: {
     alias: {
-      // Define path aliases for more robust imports
-      '@': path.resolve(__dirname, './src'),
-      'react': path.resolve(__dirname, './node_modules/react'),
-      'react-dom': path.resolve(__dirname, './node_modules/react-dom')
-    }
+      '@': path.resolve(__dirname, './src')
+    },
+    dedupe: ['react', 'react-dom']
   },
   // Ensure proper handling of environment variables
   define: {

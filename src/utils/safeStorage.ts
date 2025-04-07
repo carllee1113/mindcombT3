@@ -1,11 +1,25 @@
 // Memory fallback when storage is unavailable
 const memoryStore: Record<string, string> = {};
 
+// Error reporting function
+const reportStorageError = (error: unknown, operation: string, storageType: string) => {
+  console.warn(`${storageType} ${operation} failed:`, error);
+  // You could add additional error reporting here if needed
+};
+
 // Check if storage is available
 const isStorageAvailable = (type: 'localStorage' | 'sessionStorage'): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || !window[type]) return false;
   
   try {
+    // Test in an iframe to detect third-party cookie restrictions
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    const iframeStorage = iframe.contentWindow?.[type];
+    document.body.removeChild(iframe);
+    
+    if (!iframeStorage) return false;
     // First check if the storage object exists
     if (!window[type]) return false;
     
@@ -49,10 +63,14 @@ export const localStore = {
     
     if (hasLocalStorage) {
       try {
-        return localStorage.getItem(key);
+        const value = localStorage.getItem(key);
+        // Also store in memory as backup
+        if (value !== null) memoryStore[key] = value;
+        return value;
       } catch (error) {
-        console.warn('localStorage access failed:', error);
-        // Continue to fallback
+        reportStorageError(error, 'getItem', 'localStorage');
+        // Try to recover from memory store
+        return memoryStore[key] || null;
       }
     }
     // Fallback to memory store
