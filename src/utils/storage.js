@@ -1,20 +1,14 @@
-// Add error handling to localStorage access
+// Import the safer storage implementation
+import { localStore } from './safeStorage';
+
+// Use the safer implementation that includes memory fallback
 const getItem = (key) => {
-  try {
-    return localStorage.getItem(key)
-  } catch (error) {
-    console.warn('localStorage access failed:', error)
-    return null
-  }
-}
+  return localStore.getItem(key);
+};
 
 const setItem = (key, value) => {
-  try {
-    localStorage.setItem(key, value)
-  } catch (error) {
-    console.warn('localStorage access failed:', error)
-  }
-}
+  return localStore.setItem(key, value);
+};
 
 // Export these safer methods
 export { getItem, setItem }
