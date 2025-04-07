@@ -219,7 +219,7 @@ const Header = () => {
     <header className="bg-white shadow-sm py-3 px-6 flex justify-between items-center">
       <div className="flex items-center gap-2">
         <img 
-          src="public\mindcomb-logo.png" 
+          src="/mindcomb-logo.png" 
           alt="Mindcomb Logo" 
           className="h-8 w-8"
         />
