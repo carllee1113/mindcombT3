@@ -9,6 +9,10 @@ const Header = () => {
   const { uiStore, nodeStore } = useStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const handleArrange = () => {
+    nodeStore.arrangeNodes()
+  }
+
   const handleExport = () => {
     const xml = generateFreeMindXML(nodeStore.allNodes, nodeStore.centralNodeId)
     downloadFreeMind(xml)
@@ -227,6 +231,13 @@ const Header = () => {
       </div>
       
       <div className="flex flex-wrap justify-center gap-2 w-full sm:w-auto">
+        <button
+          onClick={handleArrange}
+          className="min-w-[100px] px-6 py-3 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 active:bg-emerald-800 transition text-lg sm:text-base touch-manipulation"
+        >
+          Arrange
+        </button>
+
         <input
           type="file"
           accept=".mm"

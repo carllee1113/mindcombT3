@@ -1,9 +1,8 @@
-import { makeAutoObservable } from 'mobx'
+import { makeAutoObservable, computed } from 'mobx'
 import { v4 as uuid } from 'uuid'
 import { ConnectionStore } from './connectionStore'
 import { RootStore } from './store'
 import { importFreeMind } from '../utils/exportFreeMind'
-import { makeObservable, computed } from 'mobx'
 
 // All types and interfaces consolidated here
 export type ConnectionPointType = 'left' | 'right' | 'leftTop' | 'rightTop' | 'leftBottom' | 'rightBottom'
@@ -72,12 +71,12 @@ export class NodeFactory {
       title: 'SCORE Story Element',
       content: 'SCORE Storytelling Framework',
       level: 0,
-      connectionPoints: calculateConnectionPoints(180, 60), // Default dimensions
+      connectionPoints: calculateConnectionPoints(180, 100), // Increased height for 3 lines
       branchColor: '#4A5568',
       x: position.x,
       y: position.y,
       width: 180,  // Set default width
-      height: 60   // Set default height
+      height: 100  // Increased height for 3 lines
     };
   }
 
@@ -97,7 +96,7 @@ export class NodeFactory {
       content: params.title,
       level: params.level,
       parentId: params.parentId,
-      connectionPoints: calculateConnectionPoints(params.width, params.height),
+      connectionPoints: calculateConnectionPoints(params.width || 180, params.height || 100), // Default dimensions for 3 lines
       branchColor: params.branchColor,
       x: params.position.x,
       y: params.position.y,
@@ -175,8 +174,8 @@ export class NodeStore {
       this.updateNodePosition(centralNode.id, { x: 0, y: 0 });
     }
     
-    // Align first layer nodes around the center with consistent spacing
-    this.alignFirstLayerNodes();
+    // Arrange all nodes in a proper layout
+    this.arrangeNodes();
     
     // Create connections for all child nodes using the same approach as import
     const childNodes = this.getChildNodes(this.centralNodeId);
@@ -246,7 +245,6 @@ export class NodeStore {
     if (node) {
       node.content = content;
       this.nodes.set(id, node);
-      this.nodes.set(id, node);
     }
   }
 
@@ -260,6 +258,91 @@ export class NodeStore {
 
   addNode(node: INode): void {
     this.nodes.set(node.id, node);
+  }
+
+  arrangeNodes(): void {
+    const centralNode = this.getNodeById(this.centralNodeId);
+    if (!centralNode) return;
+
+    // Arrange nodes level by level
+    this.arrangeFirstLevel();
+    this.arrangeSubLevels();
+  }
+
+  private arrangeFirstLevel(): void {
+    const centralNode = this.getNodeById(this.centralNodeId);
+    if (!centralNode) return;
+
+    const firstLevelNodes = this.getChildNodes(this.centralNodeId);
+    if (firstLevelNodes.length === 0) return;
+
+    const { regions, levelSpacing } = this.nodeLayout;
+    const radius = levelSpacing.first;
+
+    // Sort nodes by title for consistent ordering
+    const sortedNodes = [...firstLevelNodes].sort((a, b) => a.title.localeCompare(b.title));
+    const totalNodes = sortedNodes.length;
+
+    // Distribute nodes evenly in a radial layout
+    sortedNodes.forEach((node, index) => {
+      // Calculate angle for even distribution
+      const angle = regions.lower.start + ((regions.upper.end - regions.lower.start) * index) / (totalNodes - 1);
+      
+      // Calculate position with consistent radius
+      const newX = centralNode.position.x + (radius * Math.cos(angle));
+      const newY = centralNode.position.y + (radius * Math.sin(angle));
+
+      this.updateNodePosition(node.id, { x: newX, y: newY });
+    });
+  }
+
+  private arrangeSubLevels(): void {
+    const processLevel = (parentId: string, level: number) => {
+      const childNodes = this.getChildNodes(parentId);
+      if (childNodes.length === 0) return;
+
+      const parent = this.getNodeById(parentId);
+      if (!parent) return;
+
+      const { levelSpacing, angleConstraints } = this.nodeLayout;
+      const radius = level === 2 ? levelSpacing.second : levelSpacing.other;
+
+      // Sort child nodes for consistent arrangement
+      const sortedNodes = [...childNodes].sort((a, b) => a.title.localeCompare(b.title));
+      
+      // Calculate base angle from parent to grandparent
+      let baseAngle = 0;
+      if (parent.parentId) {
+        const grandparent = this.getNodeById(parent.parentId);
+        if (grandparent) {
+          baseAngle = Math.atan2(
+            parent.position.y - grandparent.position.y,
+            parent.position.x - grandparent.position.x
+          );
+        }
+      }
+
+      // Distribute child nodes in an arc
+      const totalNodes = sortedNodes.length;
+      const arcSpan = Math.min(Math.PI * 0.8, angleConstraints.maxDeviation);
+      
+      sortedNodes.forEach((node, index) => {
+        const angleOffset = (arcSpan * (index - (totalNodes - 1) / 2)) / totalNodes;
+        const angle = baseAngle + angleOffset;
+
+        const newX = parent.position.x + (radius * Math.cos(angle));
+        const newY = parent.position.y + (radius * Math.sin(angle));
+
+        this.updateNodePosition(node.id, { x: newX, y: newY });
+
+        // Recursively arrange next level
+        processLevel(node.id, level + 1);
+      });
+    };
+
+    // Start arranging from first level nodes
+    const firstLevelNodes = this.getChildNodes(this.centralNodeId);
+    firstLevelNodes.forEach(node => processLevel(node.id, 2));
   }
 
   alignFirstLayerNodes(): void {

@@ -1,15 +1,23 @@
 import { observer } from 'mobx-react-lite'
 import { useStore } from '../store/store'
+import { useState, useEffect } from 'react'
 import NodeEditor from './NodeEditor'
 
 const NodeEditModal = observer(() => {
   const { uiStore, nodeStore } = useStore()
+  const [editedContent, setEditedContent] = useState('')
   
   const node = uiStore.selectedNodeId ? nodeStore.getNodeById(uiStore.selectedNodeId) : null
 
+  useEffect(() => {
+    if (node) {
+      setEditedContent(node.content)
+    }
+  }, [node])
+
   const handleSave = () => {
-    if (uiStore.selectedNodeId) {
-      nodeStore.updateNodeContent(uiStore.selectedNodeId, nodeStore.getNodeById(uiStore.selectedNodeId)?.content || '')
+    if (node) {
+      nodeStore.updateNodeContent(node.id, editedContent)
       uiStore.closeNodeEditModal()
     }
   }
@@ -18,10 +26,12 @@ const NodeEditModal = observer(() => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white p-4 rounded-lg shadow-lg w-96">
-        <h2 className="text-lg font-semibold mb-4">Edit Node</h2>
-        {uiStore.selectedNodeId && <NodeEditor nodeId={uiStore.selectedNodeId} />}
-        <div className="flex justify-end gap-2">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-h-[90vh] flex flex-col mx-4">
+        <h2 className="text-xl font-semibold mb-4">Edit Node</h2>
+        <div className="flex-grow overflow-auto mb-4">
+          {uiStore.selectedNodeId && <NodeEditor nodeId={uiStore.selectedNodeId} onContentChange={setEditedContent} />}
+        </div>
+        <div className="flex justify-end gap-3">
           <button
             onClick={() => uiStore.closeNodeEditModal()}
             className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"

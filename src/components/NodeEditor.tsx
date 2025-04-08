@@ -3,27 +3,33 @@ import { useState, useEffect } from 'react';
 
 interface NodeEditorProps {
   nodeId: string;
+  onContentChange?: (content: string) => void;
 }
 
-const NodeEditor = ({ nodeId }: NodeEditorProps) => {
+const NodeEditor: React.FC<NodeEditorProps> = ({ nodeId, onContentChange }) => {
   const { nodeStore } = useStore();
-  const [localContent, setLocalContent] = useState('');
+  const node = nodeStore.getNodeById(nodeId);
+  const [localContent, setLocalContent] = useState(node?.content || '');
 
   useEffect(() => {
-    const node = nodeStore.getNodeById(nodeId);
-    if (node) setLocalContent(node.content);
-  }, [nodeId, nodeStore]);
+    if (node) {
+      setLocalContent(node.content);
+    }
+  }, [node]);
 
   const handleContentChange = (content: string) => {
     setLocalContent(content);
-    nodeStore.updateNodeContent(nodeId, content);
+    if (onContentChange) {
+      onContentChange(content);
+    }
   };
 
   return (
-    <div>
-      <textarea 
+    <div className="h-full">
+      <textarea
         value={localContent}
         onChange={(e) => handleContentChange(e.target.value)}
+        className="w-full h-24 p-3 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
   );

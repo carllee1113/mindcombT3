@@ -9,8 +9,8 @@ import { generateElaboration } from '../utils/elaborationService'
 // Add utility functions
 const getNodeSizeClass = (node: INode) => {
   return node.level === 0 
-    ? 'min-w-[200px] min-h-[80px] max-w-[300px]' 
-    : 'min-w-[180px] min-h-[60px] max-w-[180px]' // Restrict width for child nodes
+    ? 'min-w-[120px] min-h-[10px] max-w-[300px]' 
+    : 'min-w-[180px] min-h-[10px] max-w-[180px]'
 }
 
 interface NodeProps {
@@ -21,11 +21,24 @@ interface NodeProps {
 const truncateContent = (content: string, isCentral: boolean) => {
   if (isCentral) return content;
   
+  // Split content into lines
   const lines = content.split('\n');
-  const truncatedLines = lines.slice(0, 3).map(line => 
-    line.length > 30 ? line.substring(0, 27) + '...' : line
-  );
-  return truncatedLines.join('\n');
+  
+  // Process up to 3 lines
+  const processedLines = lines.slice(0, 3).map((line, index) => {
+    // Only truncate if we have all 3 lines and current line is too long
+    if (lines.length >= 3 && line.length > 30) {
+      return line.substring(0, 27) + '...';
+    }
+    return line;
+  });
+  
+  // Pad with empty lines if needed
+  while (processedLines.length < 3) {
+    processedLines.push('');
+  }
+  
+  return processedLines.join('\n');
 }
 
 // Remove NodeComponent and keep only the main Node component
@@ -35,7 +48,11 @@ const Node = observer(({ node, isCentral }: NodeProps) => {
   const [isLoading, setIsLoading] = useState(false)
 
   const nodeColor = isCentral ? '#FF0000' : (node.branchColor || '#666666')
-  const backgroundColor = isCentral ? 'white' : nodeColor + '4D' // Changed central node background to white
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    uiStore.openNodeEditModal(node.id)
+  }
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) {
@@ -100,25 +117,28 @@ const Node = observer(({ node, isCentral }: NodeProps) => {
     const offset = 150
     const childCount = childNodes.length
   
-    // Define the two regions (1-4 o'clock and 7-11 o'clock)
-    const upperRegion = { start: -Math.PI / 6, end: Math.PI / 3 }    // ~30° to ~60°
-    const lowerRegion = { start: -5 * Math.PI / 6, end: -Math.PI / 6 } // ~-150° to ~-30°
-  
-    // Determine which region to place the new node
-    let angle
-    if (childCount % 2 === 0) {
-      // Even numbers go to upper region
-      const progress = Math.floor(childCount / 2) / 3 // Divide upper region into 3 parts
-      angle = upperRegion.start + (upperRegion.end - upperRegion.start) * progress
-    } else {
-      // Odd numbers go to lower region
-      const progress = Math.floor(childCount / 2) / 3 // Divide lower region into 3 parts
-      angle = lowerRegion.start + (lowerRegion.end - lowerRegion.start) * progress
-    }
-  
+    // Determine if this is a first-level node (direct child of central node)
+    const isFirstLevel = node.id === nodeStore.centralNodeId
+    
+    // For first level nodes, distribute evenly in a circle
+    // For subsequent levels, distribute based on parent's position
+    const isRightSide = isFirstLevel ? childCount % 2 === 0 : node.position.x > centralNode.position.x
+    
+    // Adjust angle ranges for better distribution
+    const rightRange = { start: Math.PI / 12, end: 11 * Math.PI / 12 }    // 15° to 165°
+    const leftRange = { start: -11 * Math.PI / 12, end: -Math.PI / 12 }  // -165° to -15°
+    
+    // Calculate angle with improved distribution
+    const range = isRightSide ? rightRange : leftRange
+    const maxNodesPerSide = 6
+    const progress = (childCount % maxNodesPerSide) / maxNodesPerSide
+    const angle = range.start + (range.end - range.start) * progress
+    
+    // Calculate new position with adjusted offset based on level
+    const levelMultiplier = node.level === 0 ? 1 : 0.8
     const newPosition = {
-      x: node.position.x + (offset * Math.cos(angle)),
-      y: node.position.y + (offset * Math.sin(angle))
+      x: node.position.x + (offset * levelMultiplier * Math.cos(angle)),
+      y: node.position.y + (offset * levelMultiplier * Math.sin(angle))
     }
     
     // Get all existing branch colors from direct children of central node
@@ -284,7 +304,7 @@ const Node = observer(({ node, isCentral }: NodeProps) => {
           position: 'absolute',
           left: `${node.position.x}px`,
           top: `${node.position.y}px`,
-          backgroundColor,
+          backgroundColor: 'white',
           border: `2px solid ${nodeColor}`,
           transform: `scale(${uiStore.zoomLevel})`,
           transformOrigin: '0 0',
@@ -294,13 +314,14 @@ const Node = observer(({ node, isCentral }: NodeProps) => {
         onTouchStart={handleTouchStart}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onDoubleClick={handleDoubleClick}
       >
-        <div className="flex flex-col items-center">
-          <div className="text-sm text-center w-full">
+        <div className="flex flex-col items-center h-full">
+          <div className="text-sm text-center w-full h-[70%] overflow-hidden">
             {truncateContent(node.content, isCentral)}
           </div>
           {isHovered && (
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2 mt-auto">
               {!isCentral && (
                 <>
                   <button
