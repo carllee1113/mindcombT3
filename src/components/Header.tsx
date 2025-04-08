@@ -216,17 +216,17 @@ const Header = () => {
   }
 
   return (
-    <header className="bg-white shadow-sm py-3 px-6 flex justify-between items-center">
+    <header className="bg-white shadow-sm py-3 px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-2">
       <div className="flex items-center gap-2">
         <img 
           src="/mindcomb-logo.png" 
           alt="Mindcomb Logo" 
-          className="h-8 w-8"
+          className="h-10 w-10 sm:h-8 sm:w-8"
         />
         <h1 className="text-2xl font-bold text-indigo-700">Mindcomb</h1>
       </div>
       
-      <div className="flex space-x-2">
+      <div className="flex flex-wrap justify-center gap-2 w-full sm:w-auto">
         <input
           type="file"
           accept=".mm"
@@ -235,20 +235,20 @@ const Header = () => {
           onChange={handleImport}
         />
         <button 
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+          className="min-w-[100px] px-6 py-3 sm:px-4 sm:py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition text-lg sm:text-base touch-manipulation"
           onClick={() => fileInputRef.current?.click()}
         >
           Import
         </button>
         <button 
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+          className="min-w-[100px] px-6 py-3 sm:px-4 sm:py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition text-lg sm:text-base touch-manipulation"
           onClick={handleExport}
         >
           Export
         </button>
         
         <button 
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+          className="min-w-[100px] px-6 py-3 sm:px-4 sm:py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition text-lg sm:text-base touch-manipulation"
           onClick={() => {
             // Calculate bounds of all nodes
             const nodes = nodeStore.allNodes

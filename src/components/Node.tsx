@@ -217,26 +217,81 @@ const Node = observer(({ node, isCentral }: NodeProps) => {
     nodeStore.removeNode(node.id)
   }
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation()
+    if (e.touches.length === 1) {
+      uiStore.startNodeDrag(node.id)
+      uiStore.lastMouseX = e.touches[0].clientX
+      uiStore.lastMouseY = e.touches[0].clientY
+      
+      // Add document-level event listeners
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false })
+      document.addEventListener('touchend', handleGlobalTouchEnd)
+    }
+  }
+
+  const handleGlobalTouchMove = (e: TouchEvent) => {
+    e.preventDefault() // Prevent scrolling while dragging
+    if (uiStore.isDraggingNode && uiStore.draggedNodeId === node.id && e.touches.length === 1) {
+      const touch = e.touches[0]
+      // Calculate deltas with zoom level
+      const deltaX = (touch.clientX - uiStore.lastMouseX) / uiStore.zoomLevel
+      const deltaY = (touch.clientY - uiStore.lastMouseY) / uiStore.zoomLevel
+      
+      // Update node positions
+      const newX = node.position.x + deltaX
+      const newY = node.position.y + deltaY
+      
+      // Update the node and its connection points together
+      nodeStore.updateNodePosition(node.id, { x: newX, y: newY })
+      
+      // Move all child nodes recursively with the same zoom-adjusted deltas
+      const moveChildNodes = (parentId: string, dx: number, dy: number) => {
+        const childNodes = nodeStore.getChildNodes(parentId)
+        childNodes.forEach(childNode => {
+          const newChildX = childNode.position.x + dx
+          const newChildY = childNode.position.y + dy
+          nodeStore.updateNodePosition(childNode.id, { x: newChildX, y: newChildY })
+          moveChildNodes(childNode.id, dx, dy)
+        })
+      }
+      
+      moveChildNodes(node.id, deltaX, deltaY)
+      
+      // Update touch position for next frame
+      uiStore.lastMouseX = touch.clientX
+      uiStore.lastMouseY = touch.clientY
+    }
+  }
+
+  const handleGlobalTouchEnd = () => {
+    if (uiStore.isDraggingNode) {
+      uiStore.endNodeDrag()
+      // Remove document-level event listeners
+      document.removeEventListener('touchmove', handleGlobalTouchMove)
+      document.removeEventListener('touchend', handleGlobalTouchEnd)
+    }
+  }
+
   return (
     <div
       key={node.id}
       className="relative"
     >
       <div
-        className={`absolute p-4 rounded-lg shadow-md transition-transform break-words text-center
-          ${isCentral ? 'bg-white' : 'bg-white line-clamp-3'}
-          ${getNodeSizeClass(node)}`}
+        className={`relative flex flex-col items-center justify-center p-2 rounded-lg shadow-md cursor-pointer select-none ${getNodeSizeClass(node)}`}
         style={{
-          transform: `translate(${node.position.x}px, ${node.position.y}px)`,
-          cursor: uiStore.isDraggingNode && uiStore.draggedNodeId === node.id ? 'grabbing' : 'grab',
+          position: 'absolute',
+          left: `${node.position.x}px`,
+          top: `${node.position.y}px`,
+          backgroundColor,
           border: `2px solid ${nodeColor}`,
-          backgroundColor: backgroundColor
+          transform: `scale(${uiStore.zoomLevel})`,
+          transformOrigin: '0 0',
+          zIndex: isHovered ? 10 : 1,
         }}
         onMouseDown={handleMouseDown}
-        onDoubleClick={(e) => {
-          e.stopPropagation()
-          uiStore.openNodeEditModal(node.id)
-        }}
+        onTouchStart={handleTouchStart}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
